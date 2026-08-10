@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -13,6 +13,22 @@ import QuoteDetailPage from './pages/QuoteDetailPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import NotificationsPage from './pages/NotificationsPage';
+import AdminProductsPage from './pages/admin/AdminProductsPage';
+import AdminQuotesPage from './pages/admin/AdminQuotesPage';
+import AdminQuoteDetailPage from './pages/admin/AdminQuoteDetailPage';
+import AdminOrdersPage from './pages/admin/AdminOrdersPage';
+import AdminOrderDetailPage from './pages/admin/AdminOrderDetailPage';
+import AdminStaffPage from './pages/admin/AdminStaffPage';
+
+const STAFF_ROLES = ['admin', 'sales_rep'];
+
+// Staff land on the product catalog they manage; customers land on the one
+// they shop from.
+function HomeRedirect() {
+  const { user } = useAuth();
+  const target = STAFF_ROLES.includes(user?.role) ? '/admin/products' : '/products';
+  return <Navigate to={target} replace />;
+}
 
 export default function App() {
   return (
@@ -39,8 +55,46 @@ export default function App() {
               <Route path="/notifications" element={<NotificationsPage />} />
             </Route>
 
-            <Route path="/" element={<Navigate to="/products" replace />} />
-            <Route path="*" element={<Navigate to="/products" replace />} />
+            <Route
+              element={
+                <ProtectedRoute roles={STAFF_ROLES}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/admin/products" element={<AdminProductsPage />} />
+              <Route path="/admin/quotes" element={<AdminQuotesPage />} />
+              <Route path="/admin/quotes/:quoteId" element={<AdminQuoteDetailPage />} />
+              <Route path="/admin/orders" element={<AdminOrdersPage />} />
+              <Route path="/admin/orders/:id" element={<AdminOrderDetailPage />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/admin/staff" element={<AdminStaffPage />} />
+            </Route>
+
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <HomeRedirect />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="*"
+              element={
+                <ProtectedRoute>
+                  <HomeRedirect />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </CartProvider>
       </AuthProvider>

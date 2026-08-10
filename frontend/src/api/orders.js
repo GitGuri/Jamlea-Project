@@ -1,8 +1,10 @@
 import apiClient from './client';
 
-// NOTE: same caveat as quotes.js - orderRoutes.js wasn't shared, paths below
-// match the controller function names using the standard REST pattern.
-
-export const getCustomerOrders = () => apiClient.get('/orders');
+export const getCustomerOrders = () => apiClient.get('/orders/my-orders');
 
 export const getOrderById = (id) => apiClient.get(`/orders/${id}`);
+
+export const getAllOrdersAdmin = () => apiClient.get('/orders/admin/all');
+
+export const updateOrderStatus = (id, status) =>
+  apiClient.patch(`/orders/${id}/status`, { status });

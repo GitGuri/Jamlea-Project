@@ -6,6 +6,7 @@ const {
   getProductById,
   createProduct,
   updateProduct,
+  deleteProduct,
 } = require('../controllers/productController');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const validate = require('../middleware/validate');
@@ -25,5 +26,6 @@ router.get('/', authenticateToken, getAllProducts);
 router.get('/:id', authenticateToken, getProductById);
 router.post('/', authenticateToken, requireRole(['admin', 'sales_rep']), createProductRules, validate, createProduct);
 router.patch('/:id', authenticateToken, requireRole(['admin', 'sales_rep']), updateProduct);
+router.delete('/:id', authenticateToken, requireRole(['admin', 'sales_rep']), deleteProduct);
 
 module.exports = router;

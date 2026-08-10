@@ -23,7 +23,6 @@ export function CartProvider({ children }) {
           name: product.name,
           sku: product.sku,
           unit_price: product.unit_price,
-          min_order_qty: product.min_order_qty || 1,
           quantity,
         },
       ];

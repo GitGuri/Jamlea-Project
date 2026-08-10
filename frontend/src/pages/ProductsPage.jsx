@@ -31,7 +31,7 @@ export default function ProductsPage() {
   }, [search, page]);
 
   const handleAdd = (product) => {
-    addItem(product, product.min_order_qty || 1);
+    addItem(product, 1);
     setJustAdded(product.id);
     setTimeout(() => setJustAdded(null), 1200);
   };
@@ -93,7 +93,6 @@ export default function ProductsPage() {
                 <div className="mt-4 flex items-end justify-between border-t border-slate-100 pt-3">
                   <div>
                     <p className="font-mono text-lg font-semibold text-ink">{formatCurrency(product.unit_price)}</p>
-                    <p className="text-xs text-slate-400">Min order {product.min_order_qty}</p>
                   </div>
                   <Button
                     variant={justAdded === product.id ? 'secondary' : 'primary'}

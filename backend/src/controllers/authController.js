@@ -30,7 +30,10 @@ const register = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  // Use a throwaway client here, not the shared `supabase` -- see the
+  // warning in config/supabase.js for why signing in on the shared instance
+  // is unsafe.
+  const { data, error } = await supabase.createScopedClient().auth.signInWithPassword({ email, password });
 
   if (error || !data.session) {
     return res.status(401).json({ error: 'Invalid email or password' });

@@ -65,4 +65,25 @@ const updateProduct = asyncHandler(async (req, res) => {
   return res.json(data);
 });
 
-module.exports = { getAllProducts, getProductById, createProduct, updateProduct };
+const deleteProduct = asyncHandler(async (req, res) => {
+  const { error, count } = await supabase
+    .from('products')
+    .delete({ count: 'exact' })
+    .eq('id', req.params.id);
+
+  if (error) {
+    // 23503 = foreign key violation -- product is referenced by existing
+    // quote_items/order_items, so it can't be hard-deleted.
+    if (error.code === '23503') {
+      return res.status(409).json({
+        error: "This product is referenced by existing quotes or orders and can't be deleted. Set its stock to 0 instead.",
+      });
+    }
+    throw error;
+  }
+
+  if (!count) return res.status(404).json({ error: 'Product not found' });
+  return res.status(204).send();
+});
+
+module.exports = { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct };

@@ -68,10 +68,10 @@ export default function CartPage() {
                 <td className="px-4 py-3">
                   <input
                     type="number"
-                    min={item.min_order_qty}
+                    min={1}
                     value={item.quantity}
                     onChange={(e) =>
-                      updateQuantity(item.product_id, Math.max(Number(e.target.value), item.min_order_qty))
+                      updateQuantity(item.product_id, Math.max(Number(e.target.value), 1))
                     }
                     className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-sm outline-none focus:border-teal-500"
                   />

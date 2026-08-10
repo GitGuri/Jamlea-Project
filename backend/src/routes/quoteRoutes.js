@@ -4,10 +4,12 @@ const router = express.Router();
 const {
   createQuote,
   getCustomerQuotes,
+  getAllQuotesAdmin,
   getQuoteById,
+  updateQuoteStatus,
   convertQuoteToOrder,
 } = require('../controllers/quoteController');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
 const createQuoteRules = [
@@ -18,7 +20,16 @@ const createQuoteRules = [
 
 router.post('/', authenticateToken, createQuoteRules, validate, createQuote);
 router.get('/my-quotes', authenticateToken, getCustomerQuotes);
+router.get('/admin/all', authenticateToken, requireRole(['admin', 'sales_rep']), getAllQuotesAdmin);
 router.get('/:quoteId', authenticateToken, getQuoteById);
+router.patch(
+  '/:quoteId/status',
+  authenticateToken,
+  requireRole(['admin', 'sales_rep']),
+  body('status').isString().notEmpty(),
+  validate,
+  updateQuoteStatus
+);
 router.post('/:quoteId/convert', authenticateToken, convertQuoteToOrder);
 
 module.exports = router;
