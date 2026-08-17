@@ -1,7 +1,11 @@
+const crypto = require('crypto');
+const path = require('path');
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
 const { notifyInternalTeam } = require('../services/notificationService');
 const { LOW_STOCK_THRESHOLD } = require('../config/constants');
+
+const PRODUCT_IMAGES_BUCKET = 'Product Images';
 
 // Fires a low-stock notification to admin/sales_rep only on the crossing
 // (previous stock was above the threshold, new stock isn't) -- not on every
@@ -46,6 +50,33 @@ function pickWritableFields(body) {
   }
   return result;
 }
+
+// Admin/sales_rep only. Takes one multipart file (see the `upload` multer
+// middleware on the route), puts it in the Product Images bucket under a
+// random filename (never the original filename -- avoids collisions and
+// path-injection from a hostile filename), and hands back its public URL.
+// Doesn't touch the products table itself -- the frontend takes this URL
+// and includes it as image_url in a normal createProduct/updateProduct call,
+// same as if it had been typed in by hand.
+const uploadProductImage = asyncHandler(async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image file provided' });
+
+  const ext = path.extname(req.file.originalname) || '.jpg';
+  const filename = `${crypto.randomUUID()}${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(PRODUCT_IMAGES_BUCKET)
+    .upload(filename, req.file.buffer, {
+      contentType: req.file.mimetype,
+      upsert: false,
+    });
+
+  if (uploadError) return res.status(400).json({ error: uploadError.message });
+
+  const { data } = supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(filename);
+
+  return res.status(201).json({ url: data.publicUrl });
+});
 
 // Product browsing: search by name/sku, filter by category, paginated.
 // unit_price and stock_quantity are always included so customers can see
@@ -163,5 +194,6 @@ module.exports = {
   createProduct,
   updateProduct,
   deleteProduct,
+  uploadProductImage,
   notifyIfLowStockCrossing,
 };

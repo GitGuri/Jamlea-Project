@@ -45,12 +45,21 @@ export default function App() {
 
             <Route
               element={
-                <ProtectedRoute>
+                <ProtectedRoute roles={['customer']}>
                   <DashboardLayout />
                 </ProtectedRoute>
               }
             >
               <Route path="/products" element={<ProductsPage />} />
+            </Route>
+
+            <Route
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route path="/cart" element={<CartPage />} />
               <Route path="/quotes" element={<QuotesPage />} />
               <Route path="/quotes/:quoteId" element={<QuoteDetailPage />} />

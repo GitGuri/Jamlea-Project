@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const { body } = require('express-validator');
 const router = express.Router();
 const {
@@ -7,9 +8,30 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
+  uploadProductImage,
 } = require('../controllers/productController');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const validate = require('../middleware/validate');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) return cb(new Error('Only image files are allowed'));
+    cb(null, true);
+  },
+});
+
+// multer's own errors (bad file type from fileFilter, LIMIT_FILE_SIZE, etc.)
+// have no `.status`, so the app-wide errorHandler would genericize them to a
+// 500 "Internal server error" -- these are client input problems, not server
+// bugs, so surface the real message as a 400 instead.
+function handleUpload(req, res, next) {
+  upload.single('image')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}
 
 const createProductRules = [
   body('sku').isString().notEmpty(),
@@ -33,6 +55,13 @@ const updateProductRules = [
   body('min_order_qty').optional().isInt({ min: 1 }),
 ];
 
+router.post(
+  '/upload-image',
+  authenticateToken,
+  requireRole(['admin', 'sales_rep']),
+  handleUpload,
+  uploadProductImage
+);
 router.get('/', authenticateToken, getAllProducts);
 router.get('/:id', authenticateToken, getProductById);
 router.post('/', authenticateToken, requireRole(['admin', 'sales_rep']), createProductRules, validate, createProduct);

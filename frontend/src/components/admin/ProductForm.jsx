@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import Button from '../ui/Button';
+import { uploadProductImage } from '../../api/products';
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const EMPTY = {
   sku: '',
@@ -11,7 +14,6 @@ const EMPTY = {
   availability: 'local',
   lead_time_days: '',
   min_order_qty: '',
-  image_url: '',
 };
 
 const FIELD_CLASS =
@@ -31,20 +33,46 @@ export default function ProductForm({ initialProduct, onSubmit, onCancel }) {
           availability: initialProduct.availability,
           lead_time_days: initialProduct.lead_time_days,
           min_order_qty: initialProduct.min_order_qty,
-          image_url: initialProduct.image_url || '',
         }
       : EMPTY
   );
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(initialProduct?.image_url || '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
   const update = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError('Image must be smaller than 5MB.');
+      return;
+    }
+    setError('');
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSaving(true);
     try {
+      // Keep the existing image on an edit where no new file was chosen;
+      // only upload (and pay for that request) when the user actually picked
+      // a new one.
+      let imageUrl = initialProduct?.image_url || null;
+      if (imageFile) {
+        const { data } = await uploadProductImage(imageFile);
+        imageUrl = data.url;
+      }
+
       await onSubmit({
         sku: form.sku,
         name: form.name,
@@ -55,7 +83,7 @@ export default function ProductForm({ initialProduct, onSubmit, onCancel }) {
         availability: form.availability,
         lead_time_days: Number(form.lead_time_days),
         min_order_qty: Number(form.min_order_qty),
-        image_url: form.image_url || null,
+        image_url: imageUrl,
       });
     } catch (err) {
       setError(err.response?.data?.error || 'Could not save this product.');
@@ -146,8 +174,20 @@ export default function ProductForm({ initialProduct, onSubmit, onCancel }) {
       </div>
 
       <div>
-        <label className={LABEL_CLASS}>Image URL</label>
-        <input value={form.image_url} onChange={update('image_url')} className={FIELD_CLASS} />
+        <label className={LABEL_CLASS}>Product image</label>
+        {imagePreview && (
+          <img
+            src={imagePreview}
+            alt="Product preview"
+            className="mt-2 h-24 w-24 rounded-lg border border-slate-200 object-cover"
+          />
+        )}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+          className="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
+        />
       </div>
 
       {error && <p className="rounded-lg bg-bad-50 px-3 py-2 text-sm text-bad-500">{error}</p>}

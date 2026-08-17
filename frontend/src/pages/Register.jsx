@@ -45,7 +45,7 @@ export default function Register() {
     <div className="flex min-h-screen items-center justify-center bg-ink px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-card">
         <div className="mb-8 flex items-center gap-2">
-          <img src="/jamlea.png" alt="TyroTech" className="h-10 w-auto object-contain" />
+          <img src="/jamlea.jpg" alt="TyroTech" className="h-10 w-auto object-contain" />
           <span className="font-display text-lg font-semibold text-ink">Portal</span>
         </div>
 
