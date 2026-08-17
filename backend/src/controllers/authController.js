@@ -1,17 +1,30 @@
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+const { notifyUser, notifyInternalTeam, sendEmail } = require('../services/notificationService');
 
-// Public self-registration always creates a 'customer' account. Staff accounts
-// (sales_rep/admin) are created separately by an existing admin via createStaffUser,
-// so this endpoint can never be used to self-grant elevated access.
+// Public self-registration. Defaults to a 'customer' account (immediate
+// access, unchanged from before). Requesting 'sales_rep' instead lands the
+// account as 'pending' -- it can't log in until an admin approves it via
+// reviewStaffSignupAdmin. 'admin' can never be requested here; an admin can
+// promote an approved sales_rep later if needed.
 const register = asyncHandler(async (req, res) => {
-  const { email, password, company_name } = req.body;
+  const { email, password, company_name, full_name, role } = req.body;
+  const requestedRole = role || 'customer';
+
+  if (!['customer', 'sales_rep'].includes(requestedRole)) {
+    return res.status(400).json({ error: "Role must be 'customer' or 'sales_rep'." });
+  }
+  if (requestedRole === 'sales_rep' && !full_name) {
+    return res.status(400).json({ error: 'Full name is required for a staff signup.' });
+  }
+
+  const status = requestedRole === 'sales_rep' ? 'pending' : 'approved';
 
   const { data, error } = await supabase.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    user_metadata: { company_name: company_name || null, role: 'customer' },
+    user_metadata: { company_name: company_name || null, full_name: full_name || null, role: requestedRole },
   });
 
   if (error) return res.status(400).json({ error: error.message });
@@ -25,13 +38,35 @@ const register = asyncHandler(async (req, res) => {
   const { data: profile, error: profileError } = await supabase
     .from('users')
     .upsert(
-      { id: data.user.id, email, company_name: company_name || null, role: 'customer' },
+      {
+        id: data.user.id,
+        email,
+        company_name: company_name || null,
+        full_name: full_name || null,
+        role: requestedRole,
+        status,
+      },
       { onConflict: 'id' }
     )
-    .select('id, email, company_name, role')
+    .select('id, email, company_name, full_name, role, status')
     .single();
 
   if (profileError) return res.status(500).json({ error: profileError.message });
+
+  if (status === 'pending') {
+    await notifyInternalTeam({
+      type: 'general',
+      title: 'New staff signup request',
+      message: `${full_name} (${email}) has requested a sales_rep account and is awaiting approval.`,
+      relatedType: 'staff_signup',
+      relatedId: profile.id,
+    });
+
+    return res.status(201).json({
+      message: 'Your signup request has been submitted for admin approval.',
+      pending: true,
+    });
+  }
 
   return res.status(201).json({ message: 'User created successfully', user: profile });
 });
@@ -50,12 +85,19 @@ const login = asyncHandler(async (req, res) => {
 
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .select('id, email, company_name, role')
+    .select('id, email, company_name, role, status')
     .eq('id', data.user.id)
     .single();
 
   if (profileError || !profile) {
     return res.status(500).json({ error: 'User profile not found' });
+  }
+
+  if (profile.status === 'pending') {
+    return res.status(403).json({ error: 'Your account is awaiting admin approval.' });
+  }
+  if (profile.status === 'rejected') {
+    return res.status(403).json({ error: 'Your signup request was not approved.' });
   }
 
   return res.json({
@@ -70,33 +112,65 @@ const getMe = asyncHandler(async (req, res) => {
   return res.json({ user: req.user });
 });
 
-// Admin-only: creates a sales_rep or admin account.
-const createStaffUser = asyncHandler(async (req, res) => {
-  const { email, password, company_name, role } = req.body;
-
-  if (!['sales_rep', 'admin'].includes(role)) {
-    return res.status(400).json({ error: "Role must be 'sales_rep' or 'admin'." });
-  }
-
-  const { data, error } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { company_name: company_name || null, role },
-  });
-
-  if (error) return res.status(400).json({ error: error.message });
-
-  // Same trigger-timing safety net as register() -- see comment there.
-  const { data: profile, error: profileError } = await supabase
+// Admin only: every pending staff signup request.
+const getPendingStaffAdmin = asyncHandler(async (req, res) => {
+  const { data, error } = await supabase
     .from('users')
-    .upsert({ id: data.user.id, email, company_name: company_name || null, role }, { onConflict: 'id' })
-    .select('id, email, company_name, role')
-    .single();
+    .select('id, email, full_name, role, created_at')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
 
-  if (profileError) return res.status(500).json({ error: profileError.message });
-
-  return res.status(201).json({ message: 'Staff user created successfully', user: profile });
+  if (error) throw error;
+  return res.json(data);
 });
 
-module.exports = { register, login, getMe, createStaffUser };
+// Admin only. A signup can only be reviewed once -- already approved/rejected
+// requests are final here (same guard shape as paymentController.js's
+// updatePaymentStatus).
+const reviewStaffSignupAdmin = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!['approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: "Status must be 'approved' or 'rejected'." });
+  }
+
+  const { data: target, error: findErr } = await supabase
+    .from('users')
+    .select('id, email, full_name, status')
+    .eq('id', id)
+    .single();
+
+  if (findErr || !target) return res.status(404).json({ error: 'Signup request not found' });
+
+  if (target.status !== 'pending') {
+    return res.status(400).json({ error: `This request is already "${target.status}" and can't be reviewed again.` });
+  }
+
+  const { error } = await supabase.from('users').update({ status }).eq('id', id);
+  if (error) throw error;
+
+  if (status === 'approved') {
+    await notifyUser({
+      userId: target.id,
+      type: 'general',
+      title: 'Account approved',
+      message: 'Your staff account has been approved. You can now log in to the Customer Portal.',
+      relatedType: 'staff_signup',
+      relatedId: id,
+      email: target.email,
+    });
+  } else {
+    // Rejected accounts can never log in, so an in-app notification would
+    // never be seen -- email is the only channel that reaches them.
+    await sendEmail(
+      target.email,
+      'Signup request not approved',
+      'Your request for a staff account was not approved. Contact us if you have questions.'
+    );
+  }
+
+  return res.json({ message: 'Signup request updated', id, status });
+});
+
+module.exports = { register, login, getMe, getPendingStaffAdmin, reviewStaffSignupAdmin };

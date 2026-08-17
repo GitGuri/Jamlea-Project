@@ -19,12 +19,19 @@ const authenticateToken = async (req, res, next) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('users')
-      .select('id, email, company_name, role')
+      .select('id, email, company_name, role, status')
       .eq('id', user.id)
       .single();
 
     if (profileError || !profile) {
       return res.status(403).json({ error: 'User profile not found' });
+    }
+
+    // Catches a status change taking effect mid-session (e.g. a rejection
+    // after the account already holds a valid token), not just at the next
+    // login -- login() only checks status at sign-in time.
+    if (profile.status !== 'approved') {
+      return res.status(403).json({ error: 'Your account is not active.' });
     }
 
     req.user = profile;

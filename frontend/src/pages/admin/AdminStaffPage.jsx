@@ -1,94 +1,88 @@
-import { useState } from 'react';
-import { createStaffUser } from '../../api/staff';
-import Button from '../../components/ui/Button';
+import { useEffect, useState } from 'react';
+import { getPendingStaffAdmin, reviewStaffSignupAdmin } from '../../api/staff';
+import { formatDate } from '../../utils/formatters';
+import Spinner from '../../components/ui/Spinner';
+import EmptyState from '../../components/ui/EmptyState';
 
 export default function AdminStaffPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [role, setRole] = useState('sales_rep');
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actingId, setActingId] = useState(null);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const load = () => getPendingStaffAdmin().then(({ data }) => setRequests(data));
+
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, []);
+
+  const handleReview = async (id, status) => {
     setError('');
-    setSuccess('');
-    setSaving(true);
+    setActingId(id);
     try {
-      const { data } = await createStaffUser(email, password, companyName || null, role);
-      setSuccess(`${data.user.email} created as ${data.user.role}.`);
-      setEmail('');
-      setPassword('');
-      setCompanyName('');
-      setRole('sales_rep');
+      await reviewStaffSignupAdmin(id, status);
+      await load();
     } catch (err) {
-      setError(err.response?.data?.error || 'Could not create this staff account.');
+      setError(err.response?.data?.error || 'Could not update this request.');
     } finally {
-      setSaving(false);
+      setActingId(null);
     }
   };
 
   return (
     <div>
       <h1 className="font-display text-xl font-semibold text-ink">Staff</h1>
-      <p className="mt-1 text-sm text-slate-500">Create sales rep or admin accounts for your team.</p>
+      <p className="mt-1 text-sm text-slate-500">Pending staff signup requests awaiting approval.</p>
 
-      <div className="mt-6 max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-card">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
-              placeholder="teammate@company.com"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Password</label>
-            <input
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
-              placeholder="At least 8 characters"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Company name (optional)</label>
-            <input
-              type="text"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600">Role</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
-            >
-              <option value="sales_rep">Sales rep</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
+      {error && <p className="mt-4 rounded-lg bg-bad-50 px-3 py-2 text-sm text-bad-500">{error}</p>}
 
-          {error && <p className="rounded-lg bg-bad-50 px-3 py-2 text-sm text-bad-500">{error}</p>}
-          {success && <p className="rounded-lg bg-good-50 px-3 py-2 text-sm text-good-500">{success}</p>}
-
-          <Button type="submit" loading={saving} className="w-full">
-            Create account
-          </Button>
-        </form>
-      </div>
+      {loading ? (
+        <Spinner />
+      ) : requests.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState title="No pending requests" description="New staff signups will show up here for review." />
+        </div>
+      ) : (
+        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+          <table className="w-full text-sm">
+            <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Requested role</th>
+                <th className="px-4 py-3">Requested</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {requests.map((request) => (
+                <tr key={request.id}>
+                  <td className="px-4 py-3 text-ink">{request.full_name}</td>
+                  <td className="px-4 py-3 text-slate-600">{request.email}</td>
+                  <td className="px-4 py-3 text-slate-600 capitalize">{request.role.replace('_', ' ')}</td>
+                  <td className="px-4 py-3 text-slate-500">{formatDate(request.created_at)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleReview(request.id, 'approved')}
+                      disabled={actingId === request.id}
+                      className="text-xs font-medium text-good-500 hover:underline disabled:opacity-50"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleReview(request.id, 'rejected')}
+                      disabled={actingId === request.id}
+                      className="ml-3 text-xs font-medium text-bad-500 hover:underline disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
