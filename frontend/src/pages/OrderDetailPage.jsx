@@ -1,23 +1,43 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getOrderById } from '../api/orders';
+import { createPayment } from '../api/payments';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import StatusBadge from '../components/ui/StatusBadge';
 import Spinner from '../components/ui/Spinner';
+import Button from '../components/ui/Button';
+import Modal from '../components/ui/Modal';
+import PaymentForm from '../components/PaymentForm';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  const load = () => getOrderById(id).then(({ data }) => setOrder(data));
 
   useEffect(() => {
-    getOrderById(id)
-      .then(({ data }) => setOrder(data))
-      .finally(() => setLoading(false));
+    load().finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (loading) return <Spinner />;
   if (!order) return <p className="text-sm text-slate-500">Order not found.</p>;
+
+  // Only one payment can be actively submitted/approved at a time (enforced
+  // server-side); a rejected one doesn't block resubmission.
+  const activePayment = order.payments?.find((p) => p.status === 'submitted' || p.status === 'approved');
+  const latestPayment = order.payments?.length
+    ? [...order.payments].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
+    : null;
+  const canSubmitPayment = order.status === 'approved' && !activePayment;
+
+  const handleSubmitPayment = async (payload) => {
+    await createPayment({ order_id: order.id, ...payload });
+    setShowPaymentModal(false);
+    await load();
+  };
 
   return (
     <div>
@@ -64,9 +84,30 @@ export default function OrderDetailPage() {
       </div>
 
       <div className="mt-6 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-card">
-        <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
-        <p className="font-mono text-2xl font-semibold text-ink">{formatCurrency(order.total_amount)}</p>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
+          <p className="font-mono text-2xl font-semibold text-ink">{formatCurrency(order.total_amount)}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {latestPayment?.status === 'rejected' && !activePayment && (
+            <StatusBadge status="payment_rejected" />
+          )}
+          {activePayment && <StatusBadge status={`payment_${activePayment.status}`} />}
+          {canSubmitPayment && (
+            <Button onClick={() => setShowPaymentModal(true)}>Submit payment</Button>
+          )}
+        </div>
       </div>
+
+      {showPaymentModal && (
+        <Modal title="Submit payment" onClose={() => setShowPaymentModal(false)}>
+          <PaymentForm
+            defaultAmount={order.total_amount}
+            onSubmit={handleSubmitPayment}
+            onCancel={() => setShowPaymentModal(false)}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

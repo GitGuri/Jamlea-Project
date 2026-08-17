@@ -9,6 +9,12 @@ const STYLES = {
   processing: 'bg-teal-50 text-teal-600',
   completed: 'bg-good-50 text-good-500',
   cancelled: 'bg-bad-50 text-bad-500',
+  // payment statuses -- prefixed with payment_ at the call site so they
+  // don't collide with the quote/order statuses above (e.g. a submitted
+  // payment must not pick up quotes' "submitted" style/label).
+  payment_submitted: 'bg-amber-50 text-amber-600',
+  payment_approved: 'bg-good-50 text-good-500',
+  payment_rejected: 'bg-bad-50 text-bad-500',
 };
 
 const DOT_STYLES = {
@@ -20,10 +26,23 @@ const DOT_STYLES = {
   processing: 'bg-teal-500',
   completed: 'bg-good-500',
   cancelled: 'bg-bad-500',
+  payment_submitted: 'bg-amber-500',
+  payment_approved: 'bg-good-500',
+  payment_rejected: 'bg-bad-500',
+};
+
+// Overrides the default "underscore -> space" label for statuses that need
+// wording different from the raw DB value (e.g. quotes are "saved" from the
+// customer's point of view, even though the stored status is 'submitted').
+const LABELS = {
+  submitted: 'Quote saved',
+  payment_submitted: 'Payment submitted',
+  payment_approved: 'Payment approved',
+  payment_rejected: 'Payment rejected',
 };
 
 export default function StatusBadge({ status }) {
-  const label = status?.replace(/_/g, ' ') || 'unknown';
+  const label = LABELS[status] || status?.replace(/_/g, ' ') || 'unknown';
   const style = STYLES[status] || 'bg-slate-100 text-slate-500';
   const dot = DOT_STYLES[status] || 'bg-slate-400';
 

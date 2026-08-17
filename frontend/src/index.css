@@ -1,19 +1,51 @@
 @import "tailwindcss";
 
+/*
+ * Brand palette: dark blue, maroon, black, yellow.
+ *
+ * `ink`, `good`, `bad`, `canvas` are referenced as classes (bg-ink, text-bad-500,
+ * etc.) all over the app but were never actually defined anywhere -- no
+ * tailwind.config.js, no @theme block -- so every one of those classes has been
+ * a silent no-op. Defining them here fixes that AND applies the new palette in
+ * one place. `teal` is Tailwind's built-in scale; overriding its CSS variables
+ * turns every existing teal-* utility (buttons, links, badges, focus borders)
+ * into the new navy blue without editing each call site individually.
+ */
+@theme {
+  --color-teal-50: #eaf0fb;
+  --color-teal-400: #3d5d94;
+  --color-teal-500: #1e3a66;
+  --color-teal-600: #14284a;
+
+  --color-ink: #10192b;
+  --color-canvas: #f5f6f8;
+
+  --color-good-50: #ecfdf3;
+  --color-good-500: #15803d;
+
+  --color-bad-50: #fbebec;
+  --color-bad-500: #7a1f2b;
+
+  --color-maroon-50: #fbebec;
+  --color-maroon-400: #9c3a44;
+  --color-maroon-500: #7a1f2b;
+  --color-maroon-600: #5c1622;
+}
+
 * {
   font-variant-numeric: tabular-nums;
 }
 
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #111827;
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* Visible keyboard focus everywhere, not just default browser outline */
 :focus-visible {
-  outline: 2px solid #b81414;
+  outline: 2px solid #eab308;
   outline-offset: 2px;
 }
 

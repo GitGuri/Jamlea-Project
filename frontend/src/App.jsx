@@ -18,6 +18,10 @@ import AdminQuotesPage from './pages/admin/AdminQuotesPage';
 import AdminQuoteDetailPage from './pages/admin/AdminQuoteDetailPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminOrderDetailPage from './pages/admin/AdminOrderDetailPage';
+import AdminPaymentsPage from './pages/admin/AdminPaymentsPage';
+import AdminCustomersPage from './pages/admin/AdminCustomersPage';
+import AdminCustomerDetailPage from './pages/admin/AdminCustomerDetailPage';
+import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminStaffPage from './pages/admin/AdminStaffPage';
 
 const STAFF_ROLES = ['admin', 'sales_rep'];
@@ -67,6 +71,10 @@ export default function App() {
               <Route path="/admin/quotes/:quoteId" element={<AdminQuoteDetailPage />} />
               <Route path="/admin/orders" element={<AdminOrdersPage />} />
               <Route path="/admin/orders/:id" element={<AdminOrderDetailPage />} />
+              <Route path="/admin/payments" element={<AdminPaymentsPage />} />
+              <Route path="/admin/customers" element={<AdminCustomersPage />} />
+              <Route path="/admin/customers/:id" element={<AdminCustomerDetailPage />} />
+              <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
             </Route>
 
             <Route

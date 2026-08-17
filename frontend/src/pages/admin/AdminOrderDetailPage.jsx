@@ -6,7 +6,16 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
 
-const ORDER_STATUSES = ['pending_approval', 'approved', 'processing', 'completed', 'cancelled'];
+// Mirrors ORDER_TRANSITIONS in backend/src/controllers/orderController.js --
+// only 'approved' and 'cancelled' run through the stock-managing RPCs, so
+// the backend rejects any other jump (e.g. pending_approval -> completed).
+const ORDER_TRANSITIONS = {
+  pending_approval: ['approved', 'cancelled'],
+  approved: ['processing', 'cancelled'],
+  processing: ['completed', 'cancelled'],
+  completed: [],
+  cancelled: [],
+};
 
 export default function AdminOrderDetailPage() {
   const { id } = useParams();
@@ -42,6 +51,8 @@ export default function AdminOrderDetailPage() {
 
   if (loading) return <Spinner />;
   if (!order) return <p className="text-sm text-slate-500">Order not found.</p>;
+
+  const nextOptions = ORDER_TRANSITIONS[order.status] || [];
 
   return (
     <div>
@@ -96,20 +107,27 @@ export default function AdminOrderDetailPage() {
         </div>
         <div className="flex items-center gap-3">
           {error && <p className="text-sm text-bad-500">{error}</p>}
-          <select
-            value={nextStatus}
-            onChange={(e) => setNextStatus(e.target.value)}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm capitalize outline-none focus:border-teal-500"
-          >
-            {ORDER_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {status.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
-          <Button onClick={handleUpdate} loading={updating} disabled={nextStatus === order.status}>
-            Update status
-          </Button>
+          {nextOptions.length === 0 ? (
+            <p className="text-sm text-slate-500">This order is in a final state.</p>
+          ) : (
+            <>
+              <select
+                value={nextStatus}
+                onChange={(e) => setNextStatus(e.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm capitalize outline-none focus:border-teal-500"
+              >
+                <option value={order.status}>{order.status.replace('_', ' ')} (current)</option>
+                {nextOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status.replace('_', ' ')}
+                  </option>
+                ))}
+              </select>
+              <Button onClick={handleUpdate} loading={updating} disabled={nextStatus === order.status}>
+                Update status
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>

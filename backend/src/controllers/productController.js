@@ -1,5 +1,51 @@
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+const { notifyInternalTeam } = require('../services/notificationService');
+const { LOW_STOCK_THRESHOLD } = require('../config/constants');
+
+// Fires a low-stock notification to admin/sales_rep only on the crossing
+// (previous stock was above the threshold, new stock isn't) -- not on every
+// edit/order while a product stays low, which would spam the same alert
+// repeatedly. Called wherever stock_quantity actually changes.
+async function notifyIfLowStockCrossing(previousStock, product) {
+  if (previousStock <= LOW_STOCK_THRESHOLD || product.stock_quantity > LOW_STOCK_THRESHOLD) return;
+
+  const isOutOfStock = product.stock_quantity <= 0;
+  await notifyInternalTeam({
+    type: 'general',
+    title: isOutOfStock ? 'Product out of stock' : 'Low stock alert',
+    message: isOutOfStock
+      ? `${product.name} (${product.sku}) is out of stock.`
+      : `${product.name} (${product.sku}) is low on stock: ${product.stock_quantity} left.`,
+    relatedType: 'product',
+    relatedId: product.id,
+  });
+}
+
+// Whitelisted so a request body can never set id/created_at/updated_at (or
+// any other unexpected column) directly -- insert([req.body]) / update(req.body)
+// would otherwise pass those straight through to Postgres, letting a caller
+// rewrite a product's primary key via PATCH.
+const WRITABLE_FIELDS = [
+  'sku',
+  'name',
+  'category',
+  'description',
+  'unit_price',
+  'stock_quantity',
+  'availability',
+  'lead_time_days',
+  'min_order_qty',
+  'image_url',
+];
+
+function pickWritableFields(body) {
+  const result = {};
+  for (const field of WRITABLE_FIELDS) {
+    if (body[field] !== undefined) result[field] = body[field];
+  }
+  return result;
+}
 
 // Product browsing: search by name/sku, filter by category, paginated.
 // unit_price and stock_quantity are always included so customers can see
@@ -18,7 +64,12 @@ const getAllProducts = asyncHandler(async (req, res) => {
     .range(from, to);
 
   if (search) {
-    query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
+    // `,` `(` `)` are PostgREST's filter/grouping separators -- left
+    // unescaped, a search term containing them can inject extra filter
+    // conditions into this .or() clause. Strip them; a product search box
+    // has no legitimate need for them anyway.
+    const safeSearch = search.replace(/[,()]/g, '');
+    query = query.or(`name.ilike.%${safeSearch}%,sku.ilike.%${safeSearch}%`);
   }
   if (category) {
     query = query.eq('category', category);
@@ -44,7 +95,7 @@ const getProductById = asyncHandler(async (req, res) => {
 const createProduct = asyncHandler(async (req, res) => {
   const { data, error } = await supabase
     .from('products')
-    .insert([req.body])
+    .insert([pickWritableFields(req.body)])
     .select()
     .single();
 
@@ -53,15 +104,35 @@ const createProduct = asyncHandler(async (req, res) => {
 });
 
 const updateProduct = asyncHandler(async (req, res) => {
+  const fields = pickWritableFields(req.body);
+
+  // Only need the "before" value when stock is actually part of this edit --
+  // an extra read on every unrelated product edit (name, price, etc.) would
+  // be wasted.
+  let previousStock = null;
+  if (fields.stock_quantity !== undefined) {
+    const { data: existing } = await supabase
+      .from('products')
+      .select('stock_quantity')
+      .eq('id', req.params.id)
+      .single();
+    previousStock = existing?.stock_quantity ?? null;
+  }
+
   const { data, error } = await supabase
     .from('products')
-    .update(req.body)
+    .update(fields)
     .eq('id', req.params.id)
     .select()
     .single();
 
   if (error) return res.status(400).json({ error: error.message });
   if (!data) return res.status(404).json({ error: 'Product not found' });
+
+  if (previousStock !== null) {
+    await notifyIfLowStockCrossing(previousStock, data);
+  }
+
   return res.json(data);
 });
 
@@ -86,4 +157,11 @@ const deleteProduct = asyncHandler(async (req, res) => {
   return res.status(204).send();
 });
 
-module.exports = { getAllProducts, getProductById, createProduct, updateProduct, deleteProduct };
+module.exports = {
+  getAllProducts,
+  getProductById,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  notifyIfLowStockCrossing,
+};

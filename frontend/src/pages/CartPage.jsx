@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { createQuote } from '../api/quotes';
 import { formatCurrency } from '../utils/formatters';
+import { downloadQuotePdf } from '../utils/generateQuotePdf';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart, totalAmount } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -21,10 +24,14 @@ export default function CartPage() {
       clearCart();
       navigate(`/quotes/${data.quoteId}`);
     } catch (err) {
-      setError(err.response?.data?.error || 'Could not submit the quote. Try again.');
+      setError(err.response?.data?.error || 'Could not save the quote. Try again.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleDownload = () => {
+    downloadQuotePdf({ items, totalAmount, customer: user });
   };
 
   if (items.length === 0) {
@@ -44,7 +51,7 @@ export default function CartPage() {
   return (
     <div>
       <h1 className="font-display text-xl font-semibold text-ink">Quote builder</h1>
-      <p className="mt-1 text-sm text-slate-500">Review your items, then submit for a formal quote.</p>
+      <p className="mt-1 text-sm text-slate-500">Review your items, then save for a formal quote.</p>
 
       <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
         <table className="w-full text-sm">
@@ -103,8 +110,11 @@ export default function CartPage() {
           <Button variant="secondary" onClick={clearCart} disabled={submitting}>
             Clear
           </Button>
+          <Button variant="secondary" onClick={handleDownload}>
+            Download quote
+          </Button>
           <Button onClick={handleSubmit} loading={submitting}>
-            Submit quote
+            Save quote
           </Button>
         </div>
       </div>

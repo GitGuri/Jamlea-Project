@@ -16,10 +16,19 @@ const register = asyncHandler(async (req, res) => {
 
   if (error) return res.status(400).json({ error: error.message });
 
+  // A DB trigger normally creates this row from the auth user's metadata,
+  // but relying on it alone is a race: if this SELECT runs before the
+  // trigger commits, registration fails with the auth account already
+  // created and no profile to show for it -- an orphaned account that can
+  // neither register again (email taken) nor log in (no profile). Upserting
+  // here directly makes registration correct regardless of trigger timing.
   const { data: profile, error: profileError } = await supabase
     .from('users')
+    .upsert(
+      { id: data.user.id, email, company_name: company_name || null, role: 'customer' },
+      { onConflict: 'id' }
+    )
     .select('id, email, company_name, role')
-    .eq('id', data.user.id)
     .single();
 
   if (profileError) return res.status(500).json({ error: profileError.message });
@@ -78,10 +87,11 @@ const createStaffUser = asyncHandler(async (req, res) => {
 
   if (error) return res.status(400).json({ error: error.message });
 
+  // Same trigger-timing safety net as register() -- see comment there.
   const { data: profile, error: profileError } = await supabase
     .from('users')
+    .upsert({ id: data.user.id, email, company_name: company_name || null, role }, { onConflict: 'id' })
     .select('id, email, company_name, role')
-    .eq('id', data.user.id)
     .single();
 
   if (profileError) return res.status(500).json({ error: profileError.message });

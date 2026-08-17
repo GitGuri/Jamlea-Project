@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getQuoteById, convertQuoteToOrder } from '../api/quotes';
+import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { downloadQuotePdf } from '../utils/generateQuotePdf';
 import StatusBadge from '../components/ui/StatusBadge';
 import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
@@ -9,6 +11,7 @@ import Button from '../components/ui/Button';
 export default function QuoteDetailPage() {
   const { quoteId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [converting, setConverting] = useState(false);
@@ -37,6 +40,19 @@ export default function QuoteDetailPage() {
   if (!quote) return <p className="text-sm text-slate-500">Quote not found.</p>;
 
   const canConvert = quote.status === 'submitted';
+
+  const handleDownload = () => {
+    downloadQuotePdf({
+      items: quote.quote_items.map((item) => ({
+        name: item.products?.name,
+        sku: item.products?.sku,
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+      })),
+      totalAmount: quote.total_amount,
+      customer: user,
+    });
+  };
 
   return (
     <div>
@@ -89,6 +105,9 @@ export default function QuoteDetailPage() {
         </div>
         <div className="flex items-center gap-3">
           {error && <p className="text-sm text-bad-500">{error}</p>}
+          <Button variant="secondary" onClick={handleDownload}>
+            Download quote
+          </Button>
           {canConvert && (
             <Button onClick={handleConvert} loading={converting}>
               Convert to order

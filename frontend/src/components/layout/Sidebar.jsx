@@ -14,6 +14,9 @@ const STAFF_NAV_ITEMS = [
   { to: '/admin/products', label: 'Products', icon: BoxIcon },
   { to: '/admin/quotes', label: 'Quotes', icon: DocIcon },
   { to: '/admin/orders', label: 'Orders', icon: TruckIcon },
+  { to: '/admin/payments', label: 'Payments', icon: CardIcon },
+  { to: '/admin/customers', label: 'Customers', icon: PeopleIcon },
+  { to: '/admin/analytics', label: 'Analytics', icon: ChartIcon },
   { to: '/notifications', label: 'Notifications', icon: BellIcon },
 ];
 
@@ -32,9 +35,7 @@ export default function Sidebar() {
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col bg-ink text-white">
       <div className="flex items-center gap-2 px-6 py-6">
-        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-teal-500 font-display text-sm font-bold">
-          P
-        </span>
+        <img src="/jamlea.png" alt="JAMLEA" className="h-10 w-auto object-contain" />
         <span className="font-display text-lg font-semibold tracking-tight">Portal</span>
       </div>
 
@@ -46,7 +47,7 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `group flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-white/10 text-white'
+                  ? 'bg-yellow-400/10 text-white'
                   : 'text-slate-300 hover:bg-white/5 hover:text-white'
               }`
             }
@@ -54,12 +55,12 @@ export default function Sidebar() {
             {({ isActive }) => (
               <>
                 <span className="flex items-center gap-3">
-                  <span className={`h-1 w-1 rounded-full bg-teal-400 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`} />
+                  <span className={`h-1 w-1 rounded-full bg-yellow-400 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`} />
                   <Icon className="h-[18px] w-[18px]" />
                   {label}
                 </span>
                 {showCount && totalItems > 0 && (
-                  <span className="rounded-full bg-teal-500 px-1.5 py-0.5 text-xs font-semibold text-white">
+                  <span className="rounded-full bg-yellow-400 px-1.5 py-0.5 text-xs font-semibold text-ink">
                     {totalItems}
                   </span>
                 )}
@@ -108,6 +109,33 @@ function BellIcon(props) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
       <path d="M6 8a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6z" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M10 21a2 2 0 004 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+function CardIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" strokeLinecap="round" />
+      <path d="M6 15h4" strokeLinecap="round" />
+    </svg>
+  );
+}
+function PeopleIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <circle cx="8" cy="8" r="3" />
+      <path d="M2 20c0-3.3 2.7-6 6-6s6 2.7 6 6" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M15.5 13.3c2.6.4 4.5 2.6 4.5 5.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ChartIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M4 20V10M11 20V4M18 20v-7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 20h20" strokeLinecap="round" />
     </svg>
   );
 }

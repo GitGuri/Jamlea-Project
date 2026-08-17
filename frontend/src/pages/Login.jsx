@@ -30,10 +30,8 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-ink px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-card">
         <div className="mb-8 flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-teal-500 font-display text-sm font-bold text-white">
-            P
-          </span>
-          <span className="font-display text-lg font-semibold text-ink">Jamlea Customer Portal</span>
+          <img src="/jamlea.png" alt="TyroTech" className="h-10 w-auto object-contain" />
+          <span className="font-display text-lg font-semibold text-ink">TyroTech Customer Portal</span>
         </div>
 
         <h1 className="font-display text-xl font-semibold text-ink">Sign in</h1>
@@ -60,7 +58,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 pr-10 text-sm outline-none focus:border-teal-500"
-                placeholder="••••••••"
+                placeholder=""
               />
               <button
                 type="button"
