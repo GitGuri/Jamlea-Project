@@ -11,6 +11,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const whatsappRoutes = require('./routes/whatsappRoutes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -18,6 +19,15 @@ const app = express();
 // Global Middlewares
 app.use(helmet());
 app.use(cors());
+
+// Scoped to exactly this path, and registered before the global
+// express.json() below, so it captures the raw request bytes into
+// req.rawBody -- webhookController's signature check needs the exact bytes
+// Meta signed, not a re-serialized copy of the parsed object. body-parser
+// (which express.json wraps) marks the request as already-parsed, so the
+// global express.json() further down safely skips re-reading this route's
+// already-consumed stream instead of double-parsing it.
+app.use('/api/whatsapp/webhook', express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.json());
 
 // API Routes
@@ -29,6 +39,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

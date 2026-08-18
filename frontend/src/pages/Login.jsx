@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
+import GoogleButton from '../components/ui/GoogleButton';
+import AuthLayout from '../components/layout/AuthLayout';
 
 export default function Login() {
   const { login } = useAuth();
@@ -30,10 +32,10 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-card">
+    <AuthLayout>
+      <div className="rounded-2xl bg-white p-8 shadow-card">
         <div className="mb-8 flex items-center gap-2">
-          <img src="/jamlea.jpg" alt="TyroTech" className="h-10 w-auto object-contain" />
+          <img src="/jamlea.jpg" alt="TyroTech" className="h-10 w-10 rounded-full object-cover" />
           <span className="font-display text-lg font-semibold text-ink">TyroTech Customer Portal</span>
         </div>
 
@@ -53,7 +55,12 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600">Password</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium text-slate-600">Password</label>
+              <Link to="/forgot-password" className="text-xs font-medium text-teal-600 hover:underline">
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative mt-1">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -97,6 +104,16 @@ export default function Login() {
           </Button>
         </form>
 
+        <div className="mt-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs text-slate-400">or</span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <div className="mt-4">
+          <GoogleButton />
+        </div>
+
         <p className="mt-6 text-center text-sm text-slate-500">
           Don't have an account?{' '}
           <Link to="/register" className="font-medium text-teal-600 hover:underline">
@@ -104,6 +121,6 @@ export default function Login() {
           </Link>
         </p>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

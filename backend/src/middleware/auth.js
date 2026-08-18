@@ -19,7 +19,7 @@ const authenticateToken = async (req, res, next) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('users')
-      .select('id, email, company_name, role, status')
+      .select('id, email, company_name, full_name, role, status, phone')
       .eq('id', user.id)
       .single();
 

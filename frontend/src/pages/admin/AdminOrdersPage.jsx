@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllOrdersAdmin } from '../../api/orders';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import StatusBadge from '../../components/ui/StatusBadge';
+import SourceBadge from '../../components/ui/SourceBadge';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sourceFilter, setSourceFilter] = useState('all');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -17,14 +19,32 @@ export default function AdminOrdersPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const visibleOrders = useMemo(
+    () => (sourceFilter === 'all' ? orders : orders.filter((o) => o.source === sourceFilter)),
+    [orders, sourceFilter]
+  );
+
   return (
     <div>
-      <h1 className="font-display text-xl font-semibold text-ink">Orders</h1>
-      <p className="mt-1 text-sm text-slate-500">Every order placed across all customers.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-xl font-semibold text-ink">Orders</h1>
+          <p className="mt-1 text-sm text-slate-500">Every order placed across all customers.</p>
+        </div>
+        <select
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500"
+        >
+          <option value="all">All sources</option>
+          <option value="portal">Portal</option>
+          <option value="whatsapp">WhatsApp</option>
+        </select>
+      </div>
 
       {loading ? (
         <Spinner />
-      ) : orders.length === 0 ? (
+      ) : visibleOrders.length === 0 ? (
         <div className="mt-6">
           <EmptyState title="No orders yet" description="Orders converted from customer quotes will show up here." />
         </div>
@@ -37,12 +57,13 @@ export default function AdminOrdersPage() {
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Items</th>
                 <th className="px-4 py-3">Total</th>
+                <th className="px-4 py-3">Source</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Placed</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {orders.map((order) => (
+              {visibleOrders.map((order) => (
                 <tr
                   key={order.id}
                   className="cursor-pointer hover:bg-slate-50"
@@ -57,6 +78,7 @@ export default function AdminOrdersPage() {
                   </td>
                   <td className="px-4 py-3 text-slate-600">{order.order_items?.length || 0} items</td>
                   <td className="px-4 py-3 font-mono font-medium text-ink">{formatCurrency(order.total_amount)}</td>
+                  <td className="px-4 py-3"><SourceBadge source={order.source} /></td>
                   <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
                   <td className="px-4 py-3 text-slate-500">{formatDate(order.created_at)}</td>
                 </tr>

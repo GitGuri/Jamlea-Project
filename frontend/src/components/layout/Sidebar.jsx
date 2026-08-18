@@ -8,6 +8,7 @@ const CUSTOMER_NAV_ITEMS = [
   { to: '/quotes', label: 'Quotes', icon: DocIcon },
   { to: '/orders', label: 'Orders', icon: TruckIcon },
   { to: '/notifications', label: 'Notifications', icon: BellIcon },
+  { to: '/profile', label: 'Profile', icon: ProfileIcon },
 ];
 
 const STAFF_NAV_ITEMS = [
@@ -35,7 +36,7 @@ export default function Sidebar() {
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col bg-ink text-white">
       <div className="flex items-center gap-2 px-6 py-6">
-        <img src="/jamlea.jpg" alt="TyroTech" className="h-10 w-auto object-contain" />
+        <img src="/jamlea.jpg" alt="TyroTech" className="h-10 w-10 rounded-full object-cover" />
         <span className="font-display text-lg font-semibold tracking-tight">Portal</span>
       </div>
 
@@ -145,6 +146,14 @@ function StaffIcon(props) {
       <circle cx="9" cy="8" r="3" />
       <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M16 8a3 3 0 110-6M21 20c0-2.8-2-5.1-4.6-5.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ProfileIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

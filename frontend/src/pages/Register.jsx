@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
+import GoogleButton from '../components/ui/GoogleButton';
+import AuthLayout from '../components/layout/AuthLayout';
 
 export default function Register() {
   const { register } = useAuth();
@@ -10,6 +12,7 @@ export default function Register() {
   const [companyName, setCompanyName] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,7 +30,8 @@ export default function Register() {
         password,
         isStaffSignup ? null : companyName,
         isStaffSignup ? 'sales_rep' : 'customer',
-        isStaffSignup ? fullName : null
+        isStaffSignup ? fullName : null,
+        phone || null
       );
       if (result?.pending) {
         setPendingMessage(result.message);
@@ -42,10 +46,10 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-card">
+    <AuthLayout>
+      <div className="rounded-2xl bg-white p-8 shadow-card">
         <div className="mb-8 flex items-center gap-2">
-          <img src="/jamlea.jpg" alt="TyroTech" className="h-10 w-auto object-contain" />
+          <img src="/jamlea.jpg" alt="TyroTech" className="h-10 w-10 rounded-full object-cover" />
           <span className="font-display text-lg font-semibold text-ink">Portal</span>
         </div>
 
@@ -116,6 +120,17 @@ export default function Register() {
                 />
               </div>
               <div>
+                <label className="block text-xs font-medium text-slate-600">Phone (optional)</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                  placeholder="Include country code, e.g. 27821234567"
+                />
+                <p className="mt-1 text-xs text-slate-400">Lets you also order via WhatsApp using this same account.</p>
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-slate-600">Password</label>
                 <input
                   type="password"
@@ -144,6 +159,19 @@ export default function Register() {
               </Button>
             </form>
 
+            {!isStaffSignup && (
+              <>
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-slate-200" />
+                  <span className="text-xs text-slate-400">or</span>
+                  <div className="h-px flex-1 bg-slate-200" />
+                </div>
+                <div className="mt-4">
+                  <GoogleButton />
+                </div>
+              </>
+            )}
+
             <p className="mt-6 text-center text-sm text-slate-500">
               Already have an account?{' '}
               <Link to="/login" className="font-medium text-teal-600 hover:underline">
@@ -153,6 +181,6 @@ export default function Register() {
           </>
         )}
       </div>
-    </div>
+    </AuthLayout>
   );
 }

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getCustomerDetailAdmin } from '../../api/customers';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import StatusBadge from '../../components/ui/StatusBadge';
+import SourceBadge from '../../components/ui/SourceBadge';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 
@@ -33,6 +34,14 @@ export default function AdminCustomerDetailPage() {
         </h1>
         <p className="mt-1 text-sm text-slate-500">
           {customer.email} · Joined {formatDate(customer.created_at)}
+        </p>
+        <p className="mt-1 text-sm text-slate-500">
+          WhatsApp:{' '}
+          {customer.phone ? (
+            <span className="font-medium text-ink">{customer.phone}</span>
+          ) : (
+            <span className="text-slate-400">Not linked</span>
+          )}
         </p>
       </div>
 
@@ -66,6 +75,7 @@ export default function AdminCustomerDetailPage() {
                 <th className="px-4 py-3">Order</th>
                 <th className="px-4 py-3">Items</th>
                 <th className="px-4 py-3">Total</th>
+                <th className="px-4 py-3">Source</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Placed</th>
               </tr>
@@ -80,6 +90,7 @@ export default function AdminCustomerDetailPage() {
                   <td className="px-4 py-3 font-mono text-xs text-teal-600">#{order.id.slice(0, 8)}</td>
                   <td className="px-4 py-3 text-slate-600">{order.order_items?.length || 0} items</td>
                   <td className="px-4 py-3 font-mono font-medium text-ink">{formatCurrency(order.total_amount)}</td>
+                  <td className="px-4 py-3"><SourceBadge source={order.source} /></td>
                   <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
                   <td className="px-4 py-3 text-slate-500">{formatDate(order.created_at)}</td>
                 </tr>
@@ -102,6 +113,7 @@ export default function AdminCustomerDetailPage() {
                 <th className="px-4 py-3">Quote</th>
                 <th className="px-4 py-3">Items</th>
                 <th className="px-4 py-3">Total</th>
+                <th className="px-4 py-3">Source</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Submitted</th>
               </tr>
@@ -116,6 +128,7 @@ export default function AdminCustomerDetailPage() {
                   <td className="px-4 py-3 font-mono text-xs text-teal-600">#{quote.id.slice(0, 8)}</td>
                   <td className="px-4 py-3 text-slate-600">{quote.quote_items?.length || 0} items</td>
                   <td className="px-4 py-3 font-mono font-medium text-ink">{formatCurrency(quote.total_amount)}</td>
+                  <td className="px-4 py-3"><SourceBadge source={quote.source} /></td>
                   <td className="px-4 py-3"><StatusBadge status={quote.status} /></td>
                   <td className="px-4 py-3 text-slate-500">{formatDate(quote.created_at)}</td>
                 </tr>

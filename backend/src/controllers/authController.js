@@ -1,6 +1,7 @@
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
 const { notifyUser, notifyInternalTeam, sendEmail } = require('../services/notificationService');
+const { normalizePhone, findUserByPhone } = require('../services/whatsappConversationService');
 
 // Public self-registration. Defaults to a 'customer' account (immediate
 // access, unchanged from before). Requesting 'sales_rep' instead lands the
@@ -8,7 +9,7 @@ const { notifyUser, notifyInternalTeam, sendEmail } = require('../services/notif
 // reviewStaffSignupAdmin. 'admin' can never be requested here; an admin can
 // promote an approved sales_rep later if needed.
 const register = asyncHandler(async (req, res) => {
-  const { email, password, company_name, full_name, role } = req.body;
+  const { email, password, company_name, full_name, role, phone } = req.body;
   const requestedRole = role || 'customer';
 
   if (!['customer', 'sales_rep'].includes(requestedRole)) {
@@ -16,6 +17,21 @@ const register = asyncHandler(async (req, res) => {
   }
   if (requestedRole === 'sales_rep' && !full_name) {
     return res.status(400).json({ error: 'Full name is required for a staff signup.' });
+  }
+
+  // Optional, but if given it must not already belong to someone -- most
+  // often a WhatsApp-created account (self-serve signup in the chat) whose
+  // owner is now registering for real: they should log in / recover that
+  // account instead of silently colliding with the phone unique constraint
+  // as a raw 500.
+  const normalizedPhone = phone ? normalizePhone(phone) : null;
+  if (normalizedPhone) {
+    const existingByPhone = await findUserByPhone(normalizedPhone);
+    if (existingByPhone) {
+      return res.status(400).json({
+        error: 'That phone number is already linked to an account. Log in instead, or use "Forgot password?".',
+      });
+    }
   }
 
   const status = requestedRole === 'sales_rep' ? 'pending' : 'approved';
@@ -45,10 +61,11 @@ const register = asyncHandler(async (req, res) => {
         full_name: full_name || null,
         role: requestedRole,
         status,
+        phone: normalizedPhone,
       },
       { onConflict: 'id' }
     )
-    .select('id, email, company_name, full_name, role, status')
+    .select('id, email, company_name, full_name, role, status, phone')
     .single();
 
   if (profileError) return res.status(500).json({ error: profileError.message });
@@ -108,8 +125,124 @@ const login = asyncHandler(async (req, res) => {
   });
 });
 
+// Called by the frontend's /auth/callback page right after Google Sign-In
+// completes -- the browser already has a real Supabase session at that point
+// (obtained directly from Supabase, not through this backend), this just
+// makes sure a matching public.users profile exists and is usable, the same
+// way register() does for a plain email/password signup.
+const oauthComplete = asyncHandler(async (req, res) => {
+  const { access_token } = req.body;
+  if (!access_token) return res.status(400).json({ error: 'Missing access token.' });
+
+  // Scoped client, not the shared one -- same reason every other "verify a
+  // token I didn't issue myself" call in this file uses one.
+  const { data: { user }, error } = await supabase.createScopedClient().auth.getUser(access_token);
+  if (error || !user) return res.status(401).json({ error: 'Invalid or expired session.' });
+
+  let { data: profile } = await supabase
+    .from('users')
+    .select('id, email, company_name, full_name, role, status, phone')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!profile) {
+    // Brand new person signing in with Google for the first time -- same
+    // defaults as a normal self-registration. Deliberately only reached
+    // when no row exists yet: an existing account (found above) is never
+    // touched here, so this can't accidentally reset someone's role/status.
+    const { data: created, error: createErr } = await supabase
+      .from('users')
+      .upsert(
+        {
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+          role: 'customer',
+          status: 'approved',
+        },
+        { onConflict: 'id' }
+      )
+      .select('id, email, company_name, full_name, role, status, phone')
+      .single();
+
+    if (createErr) return res.status(500).json({ error: createErr.message });
+    profile = created;
+  }
+
+  if (profile.status === 'pending') {
+    return res.status(403).json({ error: 'Your account is awaiting admin approval.' });
+  }
+  if (profile.status === 'rejected') {
+    return res.status(403).json({ error: 'Your signup request was not approved.' });
+  }
+
+  return res.json({ user: profile });
+});
+
 const getMe = asyncHandler(async (req, res) => {
   return res.json({ user: req.user });
+});
+
+// The only way an existing account (one that predates this feature, or just
+// never had a number on file) can link WhatsApp -- phone number is the
+// entire identity model there, so this is what makes that possible for
+// anyone who didn't set a phone at signup.
+const updateMe = asyncHandler(async (req, res) => {
+  const { phone } = req.body;
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) return res.status(400).json({ error: 'A valid phone number is required.' });
+
+  const existing = await findUserByPhone(normalizedPhone);
+  if (existing && existing.id !== req.user.id) {
+    return res.status(400).json({ error: 'That phone number is already linked to another account.' });
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .update({ phone: normalizedPhone })
+    .eq('id', req.user.id)
+    .select('id, email, company_name, full_name, role, status, phone')
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+  return res.json({ user: data });
+});
+
+// Always responds the same way regardless of whether the email exists --
+// otherwise this endpoint becomes a way to check which emails are
+// registered. Supabase sends its own reset email (styled/routed via
+// whatever's configured in the Supabase project's Auth settings, separate
+// from this app's own SMTP_* notification emails) with a link back to
+// FRONTEND_URL/reset-password carrying a recovery token in the URL fragment.
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const redirectTo = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password`;
+
+  // Scoped client, not the shared one -- same reason login() uses one: this
+  // is an auth-state-changing call and must never run on the client every
+  // other request in this process relies on staying at service_role.
+  await supabase.createScopedClient().auth.resetPasswordForEmail(email, { redirectTo });
+
+  return res.json({ message: 'If that email is registered, a reset link has been sent.' });
+});
+
+// The frontend reads the recovery access_token out of the URL fragment
+// Supabase's reset link redirects to, and posts it here alongside the new
+// password. getUser(token) verifies it's a real, current Supabase token and
+// resolves the user id; admin.updateUserById actually sets the password.
+// Both run without ever needing a Supabase client on the frontend, keeping
+// this app's "frontend only ever talks to our own backend" architecture.
+const resetPassword = asyncHandler(async (req, res) => {
+  const { access_token, password } = req.body;
+  if (!access_token) return res.status(400).json({ error: 'Missing or expired reset link.' });
+
+  const { data: { user }, error: verifyErr } = await supabase.createScopedClient().auth.getUser(access_token);
+  if (verifyErr || !user) return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+
+  const { error: updateErr } = await supabase.auth.admin.updateUserById(user.id, { password });
+  if (updateErr) return res.status(400).json({ error: updateErr.message });
+
+  return res.json({ message: 'Password updated. You can now log in.' });
 });
 
 // Admin only: every pending staff signup request.
@@ -173,4 +306,14 @@ const reviewStaffSignupAdmin = asyncHandler(async (req, res) => {
   return res.json({ message: 'Signup request updated', id, status });
 });
 
-module.exports = { register, login, getMe, getPendingStaffAdmin, reviewStaffSignupAdmin };
+module.exports = {
+  register,
+  login,
+  oauthComplete,
+  getMe,
+  updateMe,
+  forgotPassword,
+  resetPassword,
+  getPendingStaffAdmin,
+  reviewStaffSignupAdmin,
+};

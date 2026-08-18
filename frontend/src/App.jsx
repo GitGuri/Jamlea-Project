@@ -6,6 +6,9 @@ import DashboardLayout from './components/layout/DashboardLayout';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import AuthCallback from './pages/AuthCallback';
 import ProductsPage from './pages/ProductsPage';
 import CartPage from './pages/CartPage';
 import QuotesPage from './pages/QuotesPage';
@@ -13,6 +16,7 @@ import QuoteDetailPage from './pages/QuoteDetailPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
 import NotificationsPage from './pages/NotificationsPage';
+import Profile from './pages/Profile';
 import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminQuotesPage from './pages/admin/AdminQuotesPage';
 import AdminQuoteDetailPage from './pages/admin/AdminQuoteDetailPage';
@@ -42,6 +46,9 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
 
             <Route
               element={
@@ -66,6 +73,7 @@ export default function App() {
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/orders/:id" element={<OrderDetailPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/profile" element={<Profile />} />
             </Route>
 
             <Route

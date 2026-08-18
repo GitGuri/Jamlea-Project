@@ -55,7 +55,7 @@ const getAllCustomersAdmin = asyncHandler(async (req, res) => {
 const getCustomerDetailAdmin = asyncHandler(async (req, res) => {
   const { data: customer, error: customerErr } = await supabase
     .from('users')
-    .select('id, email, company_name, created_at')
+    .select('id, email, company_name, phone, created_at')
     .eq('id', req.params.id)
     .eq('role', 'customer')
     .single();

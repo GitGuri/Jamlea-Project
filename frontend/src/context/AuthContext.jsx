@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { loginRequest, registerRequest, getMeRequest } from '../api/auth';
+import { loginRequest, registerRequest, getMeRequest, updateMeRequest, oauthCompleteRequest } from '../api/auth';
 
 const AuthContext = createContext(null);
 
@@ -33,8 +33,8 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const register = async (email, password, companyName, role, fullName) => {
-    const { data } = await registerRequest(email, password, companyName, role, fullName);
+  const register = async (email, password, companyName, role, fullName, phone) => {
+    const { data } = await registerRequest(email, password, companyName, role, fullName, phone);
     // A staff (sales_rep) signup lands as 'pending' -- there's no session to
     // log in with yet, it's awaiting admin approval. Only customer signups
     // (the default) get an immediate session.
@@ -44,14 +44,33 @@ export function AuthProvider({ children }) {
     return login(email, password);
   };
 
+  // Called from /auth/callback once Google Sign-In has already produced a
+  // real Supabase session client-side -- session comes from Supabase
+  // directly (access_token/refresh_token/expires_at), the profile comes
+  // from our own backend (oauth-complete), same split responsibility as
+  // everywhere else: Supabase owns auth, our backend owns the profile.
+  const completeOAuthLogin = async (session) => {
+    const { data } = await oauthCompleteRequest(session.access_token);
+    localStorage.setItem('access_token', session.access_token);
+    localStorage.setItem('refresh_token', session.refresh_token);
+    setUser(data.user);
+    return data.user;
+  };
+
   const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     setUser(null);
   };
 
+  const updatePhone = async (phone) => {
+    const { data } = await updateMeRequest(phone);
+    setUser(data.user);
+    return data.user;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updatePhone, completeOAuthLogin }}>
       {children}
     </AuthContext.Provider>
   );
