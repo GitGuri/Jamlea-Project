@@ -125,7 +125,7 @@ export default function AdminCustomerDetailPage() {
                   className="cursor-pointer hover:bg-slate-50"
                   onClick={() => navigate(`/admin/quotes/${quote.id}`)}
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-teal-600">#{quote.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-teal-600">#{quote.quote_number}</td>
                   <td className="px-4 py-3 text-slate-600">{quote.quote_items?.length || 0} items</td>
                   <td className="px-4 py-3 font-mono font-medium text-ink">{formatCurrency(quote.total_amount)}</td>
                   <td className="px-4 py-3"><SourceBadge source={quote.source} /></td>

@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const supabase = require('../config/supabase');
 const { getOrCreateConversation, updateConversation } = require('../services/whatsappConversationService');
 const accountResolution = require('../services/whatsappFlows/accountResolution');
 const mainMenu = require('../services/whatsappFlows/mainMenu');
@@ -38,23 +39,39 @@ function isValidSignature(req) {
   }
 }
 
-// Returns { from, text, interactiveId } for an actual incoming message, or
-// null for anything else (delivery/read status updates, malformed payloads)
-// which the webhook should just acknowledge and ignore.
+// Returns { id, from, text, interactiveId } for an actual incoming message,
+// or null for anything else (delivery/read status updates, malformed
+// payloads) which the webhook should just acknowledge and ignore.
 function extractIncomingMessage(body) {
   const value = body?.entry?.[0]?.changes?.[0]?.value;
   const message = value?.messages?.[0];
   if (!message) return null;
 
+  const id = message.id;
   const from = message.from;
   if (message.type === 'text') {
-    return { from, text: message.text?.body || '', interactiveId: null };
+    return { id, from, text: message.text?.body || '', interactiveId: null };
   }
   if (message.type === 'interactive') {
     const reply = message.interactive?.list_reply || message.interactive?.button_reply;
-    return { from, text: reply?.title || '', interactiveId: reply?.id || null };
+    return { id, from, text: reply?.title || '', interactiveId: reply?.id || null };
   }
-  return { from, text: '', interactiveId: null };
+  return { id, from, text: '', interactiveId: null };
+}
+
+// Meta retries a webhook delivery if it doesn't get a fast enough response
+// (e.g. a cold-starting free-tier host) -- retries resend the exact same
+// message id (wamid), not a new one. Without this, a slow response to a
+// single "confirm this quote" tap could create several quotes: each retry
+// looks like a brand new message with nothing to say otherwise. The unique
+// constraint on wamid makes this atomic -- if a concurrent/retried request
+// loses the race, its insert fails and it's treated as already-processed.
+async function isDuplicateMessage(wamid) {
+  if (!wamid) return false;
+  const { error } = await supabase.from('whatsapp_processed_messages').insert([{ wamid }]);
+  if (!error) return false;
+  if (error.code === '23505') return true; // unique_violation -- already seen
+  throw error;
 }
 
 // Dispatches to the flow module matching the conversation's current state.
@@ -100,6 +117,9 @@ async function receiveMessage(req, res) {
   }
 
   try {
+    if (await isDuplicateMessage(incoming.id)) {
+      return res.sendStatus(200);
+    }
     const conversation = await getOrCreateConversation(incoming.from);
     const result = await routeMessage(conversation, incoming);
     await updateConversation(conversation.id, {

@@ -53,12 +53,12 @@ async function createQuoteForCustomer(customerId, customerLabel, items, source =
   await notifyInternalTeam({
     type: 'quote_submitted',
     title: 'New quote submitted',
-    message: `${customerLabel} submitted a quote for $${total_amount.toFixed(2)} via ${source}.`,
+    message: `${customerLabel} submitted quote #${quote.quote_number} for $${total_amount.toFixed(2)} via ${source}.`,
     relatedType: 'quote',
     relatedId: quote.id,
   });
 
-  return { quoteId: quote.id, total_amount };
+  return { quoteId: quote.id, quoteNumber: quote.quote_number, total_amount };
 }
 
 // Core logic behind converting a quote to an order, shared the same way.
@@ -97,12 +97,12 @@ async function convertQuoteForCustomer(customerId, customerLabel, quoteId, sourc
   await notifyInternalTeam({
     type: 'quote_converted',
     title: 'Quote converted to order',
-    message: `${customerLabel} converted quote ${quote.id} into order ${order.id} via ${source}, awaiting approval.`,
+    message: `${customerLabel} converted quote #${quote.quote_number} into an order via ${source}, awaiting approval.`,
     relatedType: 'order',
     relatedId: order.id,
   });
 
-  return { orderId: order.id };
+  return { orderId: order.id, quoteNumber: quote.quote_number };
 }
 
 module.exports = { createQuoteForCustomer, convertQuoteForCustomer };

@@ -62,6 +62,29 @@ async function handle(conversation, message) {
         return require('./productBrowsing').startCategoryList(phone, 'quote', []);
       }
 
+      // Atomically claim the confirmation *before* doing anything slow.
+      // Wamid-based dedup (in the webhook controller) only catches Meta
+      // literally resending the same message -- it does nothing for the
+      // customer tapping "Confirm & save" a second time themselves because
+      // the first tap felt slow (e.g. a cold-starting host). Each tap is a
+      // genuinely different message, so only a guard on the *action* itself
+      // stops it: this update only succeeds for whichever request gets here
+      // first, while state is still 'quote_reviewing'. Every other
+      // concurrent/duplicate tap matches zero rows and bails out silently
+      // below, instead of creating another quote and sending another
+      // "saved" reply.
+      const { data: claimed } = await supabase
+        .from('whatsapp_conversations')
+        .update({ state: 'quote_confirming' })
+        .eq('id', conversation.id)
+        .eq('state', 'quote_reviewing')
+        .select('id')
+        .maybeSingle();
+
+      if (!claimed) {
+        return {}; // lost the race -- leave state/context untouched, send nothing
+      }
+
       const { data: customer } = await supabase
         .from('users')
         .select('email, company_name')
@@ -83,7 +106,7 @@ async function handle(conversation, message) {
 
       await sendText(
         phone,
-        `✅ Quote saved! Total: ${formatCurrency(result.total_amount)}. Reply "menu" any time -- pick "Convert quote to order" when you're ready to order this.`
+        `✅ Quote #${result.quoteNumber} saved! Total: ${formatCurrency(result.total_amount)}. Reply "menu" any time -- pick "Convert quote to order" when you're ready to order this.`
       );
       const { sendMenu } = require('./mainMenu');
       await sendMenu(phone);

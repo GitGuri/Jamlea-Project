@@ -63,7 +63,7 @@ export default function QuoteDetailPage() {
       <div className="mt-3 flex items-center justify-between">
         <div>
           <h1 className="font-display text-xl font-semibold text-ink">
-            Quote <span className="font-mono text-base text-slate-400">#{quote.id.slice(0, 8)}</span>
+            Quote <span className="font-mono text-base text-slate-400">#{quote.quote_number}</span>
           </h1>
           <p className="mt-1 text-sm text-slate-500">Submitted {formatDate(quote.created_at)}</p>
         </div>

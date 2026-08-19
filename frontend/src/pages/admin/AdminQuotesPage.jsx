@@ -69,7 +69,7 @@ export default function AdminQuotesPage() {
                   className="cursor-pointer hover:bg-slate-50"
                   onClick={() => navigate(`/admin/quotes/${quote.id}`)}
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-teal-600">#{quote.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-teal-600">#{quote.quote_number}</td>
                   <td className="px-4 py-3">
                     <p className="text-ink">{quote.users?.company_name || quote.users?.email}</p>
                     {quote.users?.company_name && (

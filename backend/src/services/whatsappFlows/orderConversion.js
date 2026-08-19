@@ -8,7 +8,7 @@ async function start(conversation) {
 
   const { data: quotes, error } = await supabase
     .from('quotes')
-    .select('id, total_amount, created_at')
+    .select('id, quote_number, total_amount, created_at')
     .eq('customer_id', user_id)
     .eq('status', 'submitted')
     .order('created_at', { ascending: false })
@@ -34,7 +34,7 @@ async function start(conversation) {
         title: 'Submitted quotes',
         rows: quotes.map((q) => ({
           id: `quote_${q.id}`,
-          title: `Quote #${q.id.slice(0, 8)}`,
+          title: `Quote #${q.quote_number}`,
           description: `${formatCurrency(q.total_amount)} · ${new Date(q.created_at).toLocaleDateString()}`,
         })),
       },
@@ -51,6 +51,21 @@ async function handle(conversation, message) {
   if (!choice || !choice.startsWith('quote_')) {
     await sendText(phone, 'Please pick a quote from the list, or reply "menu" to go back.');
     return { newState: 'order_selecting_quote', newContext: {} };
+  }
+
+  // Same atomic claim as quoteBuilding.js's confirm step, and for the same
+  // reason -- a slow response can lead to more than one tap on the same
+  // list item. Only the request that wins this update proceeds.
+  const { data: claimed } = await supabase
+    .from('whatsapp_conversations')
+    .update({ state: 'order_converting' })
+    .eq('id', conversation.id)
+    .eq('state', 'order_selecting_quote')
+    .select('id')
+    .maybeSingle();
+
+  if (!claimed) {
+    return {}; // lost the race -- leave state/context untouched, send nothing
   }
 
   const quoteId = choice.slice('quote_'.length);
@@ -71,7 +86,7 @@ async function handle(conversation, message) {
 
   await sendText(
     phone,
-    `✅ Order placed! Your order still needs to be approved by our team before payment -- we'll let you know as soon as that happens.`
+    `✅ Order placed from quote #${result.quoteNumber}! Your order still needs to be approved by our team before payment -- we'll let you know as soon as that happens.`
   );
   const { sendMenu } = require('./mainMenu');
   await sendMenu(phone);
