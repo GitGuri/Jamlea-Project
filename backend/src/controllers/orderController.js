@@ -18,21 +18,21 @@ const ORDER_TRANSITIONS = {
 };
 
 const STATUS_NOTIFICATIONS = {
-  approved: (id) => ({
+  approved: (orderNumber) => ({
     title: 'Order approved',
-    message: `Good news -- your order ${id} has been approved. You can now log in to the Customer Portal to submit your payment details.`,
+    message: `Good news -- your order #${orderNumber} has been approved. Submit your payment details on the Customer Portal or via WhatsApp ("Submit a payment" from the main menu).`,
   }),
-  cancelled: (id) => ({
+  cancelled: (orderNumber) => ({
     title: 'Order cancelled',
-    message: `Unfortunately, your order ${id} has been cancelled. Contact us if you have any questions.`,
+    message: `Unfortunately, your order #${orderNumber} has been cancelled. Contact us if you have any questions.`,
   }),
-  processing: (id) => ({
+  processing: (orderNumber) => ({
     title: 'Order in progress',
-    message: `Your order ${id} is now being processed.`,
+    message: `Your order #${orderNumber} is now being processed.`,
   }),
-  completed: (id) => ({
+  completed: (orderNumber) => ({
     title: 'Order completed',
-    message: `Your order ${id} has been completed.`,
+    message: `Your order #${orderNumber} has been completed.`,
   }),
 };
 
@@ -84,7 +84,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
 
   const { data: order, error: findErr } = await supabase
     .from('orders')
-    .select('id, status, customer_id, users(email, company_name)')
+    .select('id, order_number, status, customer_id, users(email, company_name)')
     .eq('id', id)
     .single();
 
@@ -128,9 +128,9 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     if (error) throw error;
   }
 
-  const { title, message } = STATUS_NOTIFICATIONS[status]?.(id) || {
+  const { title, message } = STATUS_NOTIFICATIONS[status]?.(order.order_number) || {
     title: 'Order status updated',
-    message: `Your order ${id} is now "${status.replace('_', ' ')}".`,
+    message: `Your order #${order.order_number} is now "${status.replace('_', ' ')}".`,
   };
 
   await notifyUser({

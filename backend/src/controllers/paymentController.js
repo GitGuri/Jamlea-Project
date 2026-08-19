@@ -1,54 +1,24 @@
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
-const { notifyUser, notifyInternalTeam } = require('../services/notificationService');
+const { notifyUser } = require('../services/notificationService');
+const { submitPaymentForCustomer } = require('../services/paymentService');
 
 // Customer: submit a bank-transfer/EFT proof of payment against one of their
 // own approved orders. There's no payment gateway here -- staff manually
 // cross-check the reference against their bank statement and approve/reject.
 const createPayment = asyncHandler(async (req, res) => {
   const { order_id, method, reference, amount, note } = req.body;
-  const customer_id = req.user.id;
+  const customerLabel = req.user.company_name || req.user.email;
 
-  const { data: order, error: orderErr } = await supabase
-    .from('orders')
-    .select('id, status')
-    .eq('id', order_id)
-    .eq('customer_id', customer_id)
-    .single();
+  const result = await submitPaymentForCustomer(
+    req.user.id,
+    customerLabel,
+    { orderId: order_id, method, reference, amount, note },
+    'portal'
+  );
+  if (result.error) return res.status(result.status).json({ error: result.error });
 
-  if (orderErr || !order) return res.status(404).json({ error: 'Order not found' });
-  if (order.status !== 'approved') {
-    return res.status(400).json({ error: 'Payment can only be submitted for an approved order.' });
-  }
-
-  const { data: existing, error: existingErr } = await supabase
-    .from('payments')
-    .select('id')
-    .eq('order_id', order_id)
-    .in('status', ['submitted', 'approved']);
-
-  if (existingErr) throw existingErr;
-  if (existing && existing.length > 0) {
-    return res.status(400).json({ error: 'A payment has already been submitted for this order.' });
-  }
-
-  const { data: payment, error } = await supabase
-    .from('payments')
-    .insert([{ order_id, customer_id, method, reference, amount, note: note || null }])
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  await notifyInternalTeam({
-    type: 'general',
-    title: 'New payment submitted',
-    message: `${req.user.company_name || req.user.email} submitted a payment of $${Number(amount).toFixed(2)} for order ${order_id}.`,
-    relatedType: 'payment',
-    relatedId: payment.id,
-  });
-
-  return res.status(201).json({ message: 'Payment submitted successfully', payment });
+  return res.status(201).json({ message: 'Payment submitted successfully', ...result });
 });
 
 // Admin/sales_rep only: every submitted payment across all customers.

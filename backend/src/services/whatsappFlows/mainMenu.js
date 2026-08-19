@@ -7,6 +7,7 @@ const MENU_SECTIONS = [
       { id: 'menu_view_products', title: '📦 View all products', description: 'Browse the full catalog' },
       { id: 'menu_build_quote', title: '📝 Create a quotation', description: 'Build a quote to submit' },
       { id: 'menu_convert_quote', title: '🛒 Convert quote to order', description: 'Turn a saved quote into an order' },
+      { id: 'menu_submit_payment', title: '💳 Submit a payment', description: 'Pay for an approved order' },
       { id: 'menu_company_details', title: 'ℹ️ TyroTech details', description: 'Contact info & more' },
     ],
   },
@@ -37,6 +38,9 @@ async function handle(conversation, message) {
   }
   if (choice === 'menu_convert_quote') {
     return require('./orderConversion').start(conversation);
+  }
+  if (choice === 'menu_submit_payment') {
+    return require('./paymentSubmission').start(conversation);
   }
   if (choice === 'menu_company_details') {
     return require('./companyDetails').send(phone);
