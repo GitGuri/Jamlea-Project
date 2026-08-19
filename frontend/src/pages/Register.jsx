@@ -181,6 +181,8 @@ export default function Register() {
           </>
         )}
       </div>
+
+      <p className="mt-6 text-center text-xs font-light text-slate-300">Powered by Quantilytix</p>
     </AuthLayout>
   );
 }

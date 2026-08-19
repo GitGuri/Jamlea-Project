@@ -70,6 +70,8 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      <p className="px-6 py-4 text-xs font-light text-slate-500">Powered by Quantilytix</p>
     </aside>
   );
 }
