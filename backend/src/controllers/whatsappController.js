@@ -7,6 +7,7 @@ const productBrowsing = require('../services/whatsappFlows/productBrowsing');
 const quoteBuilding = require('../services/whatsappFlows/quoteBuilding');
 const orderConversion = require('../services/whatsappFlows/orderConversion');
 const paymentSubmission = require('../services/whatsappFlows/paymentSubmission');
+const history = require('../services/whatsappFlows/history');
 
 // Meta's one-time handshake when the webhook URL is registered in the Meta
 // dashboard: echo hub.challenge back as plain text if the verify token
@@ -105,6 +106,9 @@ async function routeMessage(conversation, message) {
     case 'payment_awaiting_amount':
     case 'payment_reviewing':
       return paymentSubmission.handle(conversation, message);
+    case 'history_selecting_quote':
+    case 'history_selecting_order':
+      return history.handle(conversation, message);
     case 'main_menu':
     default:
       return mainMenu.handle(conversation, message);

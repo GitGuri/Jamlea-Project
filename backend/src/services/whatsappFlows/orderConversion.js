@@ -195,4 +195,4 @@ async function handle(conversation, message) {
   return { newState: 'main_menu', newContext: {} };
 }
 
-module.exports = { start, handle };
+module.exports = { start, handle, fetchQuoteWithItems };
