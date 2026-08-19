@@ -19,6 +19,8 @@
     "express-rate-limit": "^7.4.1",
     "express-validator": "^7.2.1",
     "helmet": "^8.0.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.5"
   },

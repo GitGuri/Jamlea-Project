@@ -96,6 +96,7 @@ async function routeMessage(conversation, message) {
     case 'quote_reviewing':
       return quoteBuilding.handle(conversation, message);
     case 'order_selecting_quote':
+    case 'order_reviewing_quote':
       return orderConversion.handle(conversation, message);
     case 'main_menu':
     default:

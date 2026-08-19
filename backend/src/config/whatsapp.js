@@ -9,6 +9,10 @@ function apiUrl() {
   return `https://graph.facebook.com/${GRAPH_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 }
 
+function mediaUrl() {
+  return `https://graph.facebook.com/${GRAPH_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/media`;
+}
+
 async function send(payload) {
   try {
     const res = await fetch(apiUrl(), {
@@ -65,4 +69,39 @@ function sendButtons(to, { body, buttons }) {
   });
 }
 
-module.exports = { sendText, sendList, sendButtons };
+// Meta can't attach a file the way email does -- a document first has to be
+// uploaded to Meta's own Media endpoint (getting back a media id), then a
+// document *message* references that id. Uses Node's built-in FormData/Blob
+// (global since Node 18) rather than a new dependency.
+async function uploadMedia(buffer, filename, mimeType) {
+  try {
+    const form = new FormData();
+    form.append('messaging_product', 'whatsapp');
+    form.append('file', new Blob([buffer], { type: mimeType }), filename);
+
+    const res = await fetch(mediaUrl(), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}` },
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('WhatsApp media upload failed:', JSON.stringify(data));
+      return null;
+    }
+    return data.id;
+  } catch (err) {
+    console.error('WhatsApp media upload error:', err.message);
+    return null;
+  }
+}
+
+function sendDocument(to, mediaId, filename, caption) {
+  return send({
+    to,
+    type: 'document',
+    document: { id: mediaId, filename, ...(caption ? { caption } : {}) },
+  });
+}
+
+module.exports = { sendText, sendList, sendButtons, uploadMedia, sendDocument };
