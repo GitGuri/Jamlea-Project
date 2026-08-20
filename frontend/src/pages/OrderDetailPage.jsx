@@ -7,6 +7,7 @@ import StatusBadge from '../components/ui/StatusBadge';
 import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
+import Card from '../components/ui/Card';
 import PaymentForm from '../components/PaymentForm';
 
 export default function OrderDetailPage() {
@@ -55,7 +56,7 @@ export default function OrderDetailPage() {
         <StatusBadge status={order.status} />
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+      <Card className="mt-6 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
             <tr>
@@ -81,9 +82,9 @@ export default function OrderDetailPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
 
-      <div className="mt-6 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-card">
+      <Card className="mt-6 flex items-center justify-between p-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
           <p className="font-mono text-2xl font-semibold text-ink">{formatCurrency(order.total_amount)}</p>
@@ -97,7 +98,7 @@ export default function OrderDetailPage() {
             <Button onClick={() => setShowPaymentModal(true)}>Submit payment</Button>
           )}
         </div>
-      </div>
+      </Card>
 
       {showPaymentModal && (
         <Modal title="Submit payment" onClose={() => setShowPaymentModal(false)}>

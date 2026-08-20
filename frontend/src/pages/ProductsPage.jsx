@@ -5,6 +5,7 @@ import { formatCurrency } from '../utils/formatters';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import EmptyState from '../components/ui/EmptyState';
+import Card from '../components/ui/Card';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -63,7 +64,7 @@ export default function ProductsPage() {
             setSearch(e.target.value);
           }}
           placeholder="Search by name or SKU"
-          className="w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500"
+          className="w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500"
         />
       </div>
 
@@ -80,7 +81,7 @@ export default function ProductsPage() {
         <>
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
-              <div key={product.id} className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+              <Card key={product.id} hoverable className="flex flex-col overflow-hidden">
                 {product.image_url ? (
                   <img
                     src={product.image_url}
@@ -129,7 +130,7 @@ export default function ProductsPage() {
                         value={getQuantity(product)}
                         onChange={(e) => setQuantity(product, e.target.value)}
                         disabled={product.stock_quantity === 0}
-                        className="w-16 rounded-lg border border-slate-200 px-2 py-2 text-sm outline-none focus:border-teal-500 disabled:bg-slate-50"
+                        className="w-16 rounded-lg border border-slate-200 px-2 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500 disabled:bg-slate-50"
                       />
                       <Button
                         variant={justAdded === product.id ? 'secondary' : 'primary'}
@@ -141,7 +142,7 @@ export default function ProductsPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
 

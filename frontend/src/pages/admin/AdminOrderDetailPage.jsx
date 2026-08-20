@@ -5,6 +5,7 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
+import Card from '../../components/ui/Card';
 
 // Mirrors ORDER_TRANSITIONS in backend/src/controllers/orderController.js --
 // only 'approved' and 'cancelled' run through the stock-managing RPCs, so
@@ -72,7 +73,7 @@ export default function AdminOrderDetailPage() {
         <StatusBadge status={order.status} />
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+      <Card className="mt-6 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
             <tr>
@@ -98,9 +99,9 @@ export default function AdminOrderDetailPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
 
-      <div className="mt-6 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-card">
+      <Card className="mt-6 flex items-center justify-between p-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
           <p className="font-mono text-2xl font-semibold text-ink">{formatCurrency(order.total_amount)}</p>
@@ -114,7 +115,7 @@ export default function AdminOrderDetailPage() {
               <select
                 value={nextStatus}
                 onChange={(e) => setNextStatus(e.target.value)}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-sm capitalize outline-none focus:border-teal-500"
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm capitalize outline-none transition-colors duration-150 focus:border-teal-500"
               >
                 <option value={order.status}>{order.status.replace('_', ' ')} (current)</option>
                 {nextOptions.map((status) => (
@@ -129,7 +130,7 @@ export default function AdminOrderDetailPage() {
             </>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

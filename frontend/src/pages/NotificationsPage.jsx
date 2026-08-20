@@ -4,6 +4,7 @@ import { formatDate } from '../utils/formatters';
 import Spinner from '../components/ui/Spinner';
 import EmptyState from '../components/ui/EmptyState';
 import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
@@ -59,11 +60,11 @@ export default function NotificationsPage() {
           <EmptyState title="No notifications" description="You're all caught up." />
         </div>
       ) : (
-        <div className="mt-6 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+        <Card className="divide-y divide-slate-100 overflow-hidden">
           {notifications.map((n) => (
             <div
               key={n.id}
-              className={`flex items-start justify-between gap-4 px-4 py-4 ${!n.is_read ? 'bg-teal-50/40' : ''}`}
+              className={`flex items-start justify-between gap-4 px-4 py-4 transition-colors duration-150 ${!n.is_read ? 'bg-teal-50/40' : ''}`}
             >
               <div className="flex gap-3">
                 <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${!n.is_read ? 'bg-teal-500' : 'bg-transparent'}`} />
@@ -76,14 +77,14 @@ export default function NotificationsPage() {
               {!n.is_read && (
                 <button
                   onClick={() => handleMarkRead(n.id)}
-                  className="shrink-0 text-xs font-medium text-teal-600 hover:underline"
+                  className="shrink-0 text-xs font-medium text-teal-600 transition-colors duration-150 hover:underline"
                 >
                   Mark as read
                 </button>
               )}
             </div>
           ))}
-        </div>
+        </Card>
       )}
     </div>
   );

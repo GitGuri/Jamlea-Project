@@ -6,6 +6,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import SourceBadge from '../../components/ui/SourceBadge';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
+import Card from '../../components/ui/Card';
 
 export default function AdminQuotesPage() {
   const [quotes, setQuotes] = useState([]);
@@ -34,7 +35,7 @@ export default function AdminQuotesPage() {
         <select
           value={sourceFilter}
           onChange={(e) => setSourceFilter(e.target.value)}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500"
         >
           <option value="all">All sources</option>
           <option value="portal">Portal</option>
@@ -49,7 +50,7 @@ export default function AdminQuotesPage() {
           <EmptyState title="No quotes yet" description="Submitted customer quotes will show up here." />
         </div>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+        <Card className="mt-6 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <tr>
@@ -66,7 +67,7 @@ export default function AdminQuotesPage() {
               {visibleQuotes.map((quote) => (
                 <tr
                   key={quote.id}
-                  className="cursor-pointer hover:bg-slate-50"
+                  className="cursor-pointer transition-colors duration-150 hover:bg-slate-50"
                   onClick={() => navigate(`/admin/quotes/${quote.id}`)}
                 >
                   <td className="px-4 py-3 font-mono text-xs text-teal-600">#{quote.quote_number}</td>
@@ -85,7 +86,7 @@ export default function AdminQuotesPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   );

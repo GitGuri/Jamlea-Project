@@ -6,6 +6,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import SourceBadge from '../../components/ui/SourceBadge';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
+import Card from '../../components/ui/Card';
 
 export default function AdminCustomerDetailPage() {
   const { id } = useParams();
@@ -46,20 +47,20 @@ export default function AdminCustomerDetailPage() {
       </div>
 
       <div className="mt-6 grid grid-cols-3 gap-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card">
+        <Card className="p-4">
           <p className="text-xs uppercase tracking-wide text-slate-500">Total spent</p>
           <p className="mt-1 font-mono text-2xl font-semibold text-ink">{formatCurrency(customer.total_spent)}</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card">
+        </Card>
+        <Card className="p-4">
           <p className="text-xs uppercase tracking-wide text-slate-500">Orders</p>
           <p className="mt-1 font-mono text-2xl font-semibold text-ink">{customer.order_count}</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card">
+        </Card>
+        <Card className="p-4">
           <p className="text-xs uppercase tracking-wide text-slate-500">Last order</p>
           <p className="mt-1 text-sm font-medium text-ink">
             {customer.last_order_at ? formatDate(customer.last_order_at) : 'No orders yet'}
           </p>
-        </div>
+        </Card>
       </div>
 
       <h2 className="mt-8 font-display text-base font-semibold text-ink">Orders</h2>
@@ -68,7 +69,7 @@ export default function AdminCustomerDetailPage() {
           <EmptyState title="No orders yet" description="This customer hasn't placed an order." />
         </div>
       ) : (
-        <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+        <Card className="mt-3 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <tr>
@@ -84,7 +85,7 @@ export default function AdminCustomerDetailPage() {
               {customer.orders.map((order) => (
                 <tr
                   key={order.id}
-                  className="cursor-pointer hover:bg-slate-50"
+                  className="cursor-pointer transition-colors duration-150 hover:bg-slate-50"
                   onClick={() => navigate(`/admin/orders/${order.id}`)}
                 >
                   <td className="px-4 py-3 font-mono text-xs text-teal-600">#{order.id.slice(0, 8)}</td>
@@ -97,7 +98,7 @@ export default function AdminCustomerDetailPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
 
       <h2 className="mt-8 font-display text-base font-semibold text-ink">Quotes</h2>
@@ -106,7 +107,7 @@ export default function AdminCustomerDetailPage() {
           <EmptyState title="No quotes yet" description="This customer hasn't submitted a quote." />
         </div>
       ) : (
-        <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+        <Card className="mt-3 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <tr>
@@ -122,7 +123,7 @@ export default function AdminCustomerDetailPage() {
               {customer.quotes.map((quote) => (
                 <tr
                   key={quote.id}
-                  className="cursor-pointer hover:bg-slate-50"
+                  className="cursor-pointer transition-colors duration-150 hover:bg-slate-50"
                   onClick={() => navigate(`/admin/quotes/${quote.id}`)}
                 >
                   <td className="px-4 py-3 font-mono text-xs text-teal-600">#{quote.quote_number}</td>
@@ -135,7 +136,7 @@ export default function AdminCustomerDetailPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   );

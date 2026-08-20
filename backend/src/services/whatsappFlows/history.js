@@ -54,8 +54,11 @@ async function startQuotes(conversation) {
         title: 'All quotes',
         rows: quotes.map((q) => ({
           id: `hist_quote_${q.id}`,
-          title: `Quote #${q.quote_number} · ${formatStatus(q.status)}`,
-          description: `${formatCurrency(q.total_amount)} · ${new Date(q.created_at).toLocaleDateString()}`,
+          // WhatsApp caps interactive list row titles at 24 characters --
+          // status goes in the description (72-char cap) instead, since
+          // "Quote #14 · Submitted" style titles can run over that.
+          title: `Quote #${q.quote_number}`,
+          description: `${formatStatus(q.status)} · ${formatCurrency(q.total_amount)} · ${new Date(q.created_at).toLocaleDateString()}`,
         })),
       },
     ],
@@ -126,8 +129,9 @@ async function startOrders(conversation) {
         title: 'All orders',
         rows: orders.map((o) => ({
           id: `hist_order_${o.id}`,
-          title: `Order #${o.order_number} · ${formatStatus(o.status)}`,
-          description: `${formatCurrency(o.total_amount)} · ${new Date(o.created_at).toLocaleDateString()}`,
+          // Same 24-char row-title cap as the quotes list above.
+          title: `Order #${o.order_number}`,
+          description: `${formatStatus(o.status)} · ${formatCurrency(o.total_amount)} · ${new Date(o.created_at).toLocaleDateString()}`,
         })),
       },
     ],

@@ -6,6 +6,7 @@ import StatusBadge from '../components/ui/StatusBadge';
 import Spinner from '../components/ui/Spinner';
 import EmptyState from '../components/ui/EmptyState';
 import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 
 export default function QuotesPage() {
   const [quotes, setQuotes] = useState([]);
@@ -38,7 +39,7 @@ export default function QuotesPage() {
           />
         </div>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+        <Card className="mt-6 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <tr>
@@ -53,7 +54,7 @@ export default function QuotesPage() {
               {quotes.map((quote) => (
                 <tr
                   key={quote.id}
-                  className="cursor-pointer hover:bg-slate-50"
+                  className="cursor-pointer transition-colors duration-150 hover:bg-slate-50"
                   onClick={() => navigate(`/quotes/${quote.id}`)}
                 >
                   <td className="px-4 py-3 font-mono text-xs text-teal-600">#{quote.quote_number}</td>
@@ -65,7 +66,7 @@ export default function QuotesPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   );

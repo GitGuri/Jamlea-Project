@@ -5,6 +5,7 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 import Button from '../../components/ui/Button';
+import Card from '../../components/ui/Card';
 
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState([]);
@@ -45,7 +46,7 @@ export default function AdminCustomersPage() {
             setSearch(e.target.value);
           }}
           placeholder="Search by email or company"
-          className="w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500"
+          className="w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500"
         />
       </div>
 
@@ -60,7 +61,7 @@ export default function AdminCustomersPage() {
         </div>
       ) : (
         <>
-          <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+          <Card className="mt-6 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                 <tr>
@@ -76,7 +77,7 @@ export default function AdminCustomersPage() {
                 {customers.map((customer) => (
                   <tr
                     key={customer.id}
-                    className="cursor-pointer hover:bg-slate-50"
+                    className="cursor-pointer transition-colors duration-150 hover:bg-slate-50"
                     onClick={() => navigate(`/admin/customers/${customer.id}`)}
                   >
                     <td className="px-4 py-3">
@@ -96,7 +97,7 @@ export default function AdminCustomersPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
 
           {totalPages > 1 && (
             <div className="mt-6 flex items-center justify-center gap-3">

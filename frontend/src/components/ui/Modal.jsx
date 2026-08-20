@@ -1,8 +1,10 @@
-export default function Modal({ title, onClose, children }) {
+export default function Modal({ title, onClose, children, wide = false }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4 animate-modal-backdrop">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-card">
+      <div
+        className={`relative w-full rounded-2xl bg-white p-6 shadow-card animate-modal-panel ${wide ? 'max-w-4xl' : 'max-w-lg'}`}
+      >
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-ink">{title}</h2>
           <button

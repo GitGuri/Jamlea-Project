@@ -30,6 +30,18 @@
   --color-maroon-400: #9c3a44;
   --color-maroon-500: #7a1f2b;
   --color-maroon-600: #5c1622;
+
+  /*
+   * font-display and shadow-card are referenced in ~50 places across the
+   * app (every card, every heading) but were never actually defined here --
+   * same silent-no-op bug the comment above describes for ink/good/bad/canvas,
+   * just missed the first time. Every card has been rendering with zero
+   * shadow and every heading has been falling back to the body font this
+   * whole time. Defining them retroactively "activates" the intended look
+   * everywhere with no JSX changes needed.
+   */
+  --font-display: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --shadow-card: 0 1px 2px rgba(16, 25, 43, 0.04), 0 4px 12px rgba(16, 25, 43, 0.06);
 }
 
 * {
@@ -47,6 +59,26 @@ body {
 :focus-visible {
   outline: 2px solid #eab308;
   outline-offset: 2px;
+}
+
+/* Modal entrance -- backdrop fades in, panel fades+scales up slightly. No
+   exit animation (closes instantly) -- there's no animation library in this
+   project to sequence unmount after an exit transition, and an instant
+   close is a common, acceptable simplification without one. */
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+}
+
+@keyframes modal-panel-in {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+}
+
+.animate-modal-backdrop {
+  animation: modal-backdrop-in 150ms ease-out;
+}
+
+.animate-modal-panel {
+  animation: modal-panel-in 180ms ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {

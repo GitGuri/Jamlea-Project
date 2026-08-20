@@ -46,7 +46,7 @@ export default function Sidebar() {
             key={to}
             to={to}
             className={({ isActive }) =>
-              `group flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              `group flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 ${
                 isActive
                   ? 'bg-yellow-400/10 text-white'
                   : 'text-slate-300 hover:bg-white/5 hover:text-white'
@@ -56,7 +56,7 @@ export default function Sidebar() {
             {({ isActive }) => (
               <>
                 <span className="flex items-center gap-3">
-                  <span className={`h-1 w-1 rounded-full bg-yellow-400 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`} />
+                  <span className={`h-1 w-1 rounded-full bg-yellow-400 transition-opacity duration-150 ${isActive ? 'opacity-100' : 'opacity-0'}`} />
                   <Icon className="h-[18px] w-[18px]" />
                   {label}
                 </span>

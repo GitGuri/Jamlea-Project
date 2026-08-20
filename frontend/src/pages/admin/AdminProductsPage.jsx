@@ -5,7 +5,9 @@ import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 import Modal from '../../components/ui/Modal';
+import Card from '../../components/ui/Card';
 import ProductForm from '../../components/admin/ProductForm';
+import ProductImportModal from '../../components/admin/ProductImportModal';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState([]);
@@ -15,7 +17,7 @@ export default function AdminProductsPage() {
   const [total, setTotal] = useState(0);
   const limit = 20;
 
-  const [modalMode, setModalMode] = useState(null); // null | 'create' | 'edit'
+  const [modalMode, setModalMode] = useState(null); // null | 'create' | 'edit' | 'import'
   const [editingProduct, setEditingProduct] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
@@ -46,7 +48,12 @@ export default function AdminProductsPage() {
     setEditingProduct(product);
     setModalMode('edit');
   };
+  const openImport = () => setModalMode('import');
   const closeModal = () => setModalMode(null);
+  const handleImportDone = () => {
+    closeModal();
+    load();
+  };
 
   const handleSubmit = async (payload) => {
     if (modalMode === 'edit') {
@@ -88,8 +95,9 @@ export default function AdminProductsPage() {
               setSearch(e.target.value);
             }}
             placeholder="Search by name or SKU"
-            className="w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500"
+            className="w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500"
           />
+          <Button variant="secondary" onClick={openImport}>Import from file</Button>
           <Button onClick={openCreate}>Add product</Button>
         </div>
       </div>
@@ -109,7 +117,7 @@ export default function AdminProductsPage() {
         </div>
       ) : (
         <>
-          <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+          <Card className="mt-6 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                 <tr>
@@ -135,14 +143,14 @@ export default function AdminProductsPage() {
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => openEdit(product)}
-                        className="text-xs font-medium text-teal-600 hover:underline"
+                        className="text-xs font-medium text-teal-600 transition-colors duration-150 hover:underline"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(product)}
                         disabled={deletingId === product.id}
-                        className="ml-3 text-xs font-medium text-bad-500 hover:underline disabled:opacity-50"
+                        className="ml-3 text-xs font-medium text-bad-500 transition-colors duration-150 hover:underline disabled:opacity-50"
                       >
                         Delete
                       </button>
@@ -151,7 +159,7 @@ export default function AdminProductsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
 
           {totalPages > 1 && (
             <div className="mt-6 flex items-center justify-center gap-3">
@@ -169,9 +177,15 @@ export default function AdminProductsPage() {
         </>
       )}
 
-      {modalMode && (
+      {(modalMode === 'create' || modalMode === 'edit') && (
         <Modal title={modalMode === 'edit' ? 'Edit product' : 'Add product'} onClose={closeModal}>
           <ProductForm initialProduct={editingProduct} onSubmit={handleSubmit} onCancel={closeModal} />
+        </Modal>
+      )}
+
+      {modalMode === 'import' && (
+        <Modal title="Import products from file" onClose={closeModal} wide>
+          <ProductImportModal onDone={handleImportDone} />
         </Modal>
       )}
     </div>

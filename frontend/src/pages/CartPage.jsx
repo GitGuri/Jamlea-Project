@@ -7,6 +7,7 @@ import { formatCurrency } from '../utils/formatters';
 import { downloadQuotePdf } from '../utils/generateQuotePdf';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
+import Card from '../components/ui/Card';
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart, totalAmount } = useCart();
@@ -53,7 +54,7 @@ export default function CartPage() {
       <h1 className="font-display text-xl font-semibold text-ink">Quote builder</h1>
       <p className="mt-1 text-sm text-slate-500">Review your items, then save for a formal quote.</p>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+      <Card className="mt-6 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
             <tr>
@@ -80,7 +81,7 @@ export default function CartPage() {
                     onChange={(e) =>
                       updateQuantity(item.product_id, Math.max(Number(e.target.value), 1))
                     }
-                    className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-sm outline-none focus:border-teal-500"
+                    className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-sm outline-none transition-colors duration-150 focus:border-teal-500"
                   />
                 </td>
                 <td className="px-4 py-3 font-mono font-medium text-ink">
@@ -89,7 +90,7 @@ export default function CartPage() {
                 <td className="px-4 py-3 text-right">
                   <button
                     onClick={() => removeItem(item.product_id)}
-                    className="text-xs font-medium text-bad-500 hover:underline"
+                    className="text-xs font-medium text-bad-500 transition-colors duration-150 hover:underline"
                   >
                     Remove
                   </button>
@@ -98,9 +99,9 @@ export default function CartPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
 
-      <div className="mt-6 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-card">
+      <Card className="mt-6 flex items-center justify-between p-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
           <p className="font-mono text-2xl font-semibold text-ink">{formatCurrency(totalAmount)}</p>
@@ -117,7 +118,7 @@ export default function CartPage() {
             Save quote
           </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

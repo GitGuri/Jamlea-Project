@@ -20,3 +20,12 @@ export const uploadProductImage = (file) => {
   formData.append('image', file);
   return apiClient.post('/products/upload-image', formData);
 };
+
+// Same unset-Content-Type reasoning as uploadProductImage above.
+export const extractProductImport = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiClient.post('/products/import/extract', formData);
+};
+
+export const confirmProductImport = (rows) => apiClient.post('/products/import/confirm', { rows });

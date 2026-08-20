@@ -10,6 +10,7 @@ const {
   deleteProduct,
   uploadProductImage,
 } = require('../controllers/productController');
+const { extractProductImport, confirmImport } = require('../controllers/productImportController');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
@@ -28,6 +29,32 @@ const upload = multer({
 // bugs, so surface the real message as a 400 instead.
 function handleUpload(req, res, next) {
   upload.single('image')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}
+
+// Broader than the image-only `upload` above -- this one also accepts the
+// receipt/spreadsheet formats the import flow reads (Gemini handles images
+// and PDFs directly; .xlsx/.csv get parsed locally first, see
+// productImportController.js).
+const IMPORT_MIMETYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/csv',
+];
+const importUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/') && !IMPORT_MIMETYPES.includes(file.mimetype)) {
+      return cb(new Error('Only images, PDF, .xlsx, or .csv files are allowed'));
+    }
+    cb(null, true);
+  },
+});
+function handleImportUpload(req, res, next) {
+  importUpload.single('file')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
     next();
   });
@@ -62,6 +89,14 @@ router.post(
   handleUpload,
   uploadProductImage
 );
+router.post(
+  '/import/extract',
+  authenticateToken,
+  requireRole(['admin', 'sales_rep']),
+  handleImportUpload,
+  extractProductImport
+);
+router.post('/import/confirm', authenticateToken, requireRole(['admin', 'sales_rep']), confirmImport);
 router.get('/', authenticateToken, getAllProducts);
 router.get('/:id', authenticateToken, getProductById);
 router.post('/', authenticateToken, requireRole(['admin', 'sales_rep']), createProductRules, validate, createProduct);

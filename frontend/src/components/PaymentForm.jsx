@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Button from './ui/Button';
 
 const FIELD_CLASS =
-  'mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500';
+  'mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500';
 const LABEL_CLASS = 'block text-xs font-medium text-slate-600';
 
 export default function PaymentForm({ defaultAmount, onSubmit, onCancel }) {

@@ -1,5 +1,6 @@
 const supabase = require('../config/supabase');
 const { notifyInternalTeam } = require('./notificationService');
+const { formatCurrency } = require('../utils/formatCurrency');
 
 // Core logic behind submitting a payment, shared by the portal's POST
 // /payments route and the WhatsApp paymentSubmission flow -- two front doors
@@ -41,7 +42,7 @@ async function submitPaymentForCustomer(customerId, customerLabel, { orderId, me
   await notifyInternalTeam({
     type: 'general',
     title: 'New payment submitted',
-    message: `${customerLabel} submitted a payment of ${Number(amount).toFixed(2)} for order #${order.order_number} via ${source}.`,
+    message: `${customerLabel} submitted a payment of ${formatCurrency(amount)} for order #${order.order_number} via ${source}.`,
     relatedType: 'payment',
     relatedId: payment.id,
   });

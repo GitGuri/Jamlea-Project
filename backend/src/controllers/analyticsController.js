@@ -2,13 +2,28 @@ const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
 
 const QUOTE_STATUSES = ['draft', 'submitted', 'converted', 'expired'];
+const ORDER_STATUSES = ['pending_approval', 'approved', 'processing', 'completed', 'cancelled'];
 const SPEND_EXCLUDED_STATUSES = ['cancelled'];
+const TREND_DAYS = 30;
+
+// Zero-filled so the trend chart shows real gaps instead of skipping days
+// with no orders -- an empty day and a missing bucket look identical to a
+// caller that just indexes by date.
+function lastNDates(n) {
+  const dates = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+  return dates;
+}
 
 // Admin/sales_rep only. Everything here is aggregated in JS from the raw
-// tables (quotes, order_items+products, users+orders) -- same approach as
-// customerController.js, no Postgres views/RPCs needed for this data scale.
+// tables (quotes, order_items+products, orders, payments, users+orders) --
+// same approach as customerController.js, no Postgres views/RPCs needed for
+// this data scale.
 const getAnalyticsSummary = asyncHandler(async (req, res) => {
-  const { data: quotes, error: quotesErr } = await supabase.from('quotes').select('status');
+  const { data: quotes, error: quotesErr } = await supabase.from('quotes').select('status, source');
   if (quotesErr) throw quotesErr;
 
   const counts = QUOTE_STATUSES.reduce((acc, status) => ({ ...acc, [status]: 0 }), {});
@@ -47,6 +62,42 @@ const getAnalyticsSummary = asyncHandler(async (req, res) => {
   const topProducts = [...productStats.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
   const topCategories = [...categoryStats.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
+  const { data: orders, error: ordersErr } = await supabase
+    .from('orders')
+    .select('status, total_amount, created_at, source');
+  if (ordersErr) throw ordersErr;
+
+  const orderCounts = ORDER_STATUSES.reduce((acc, status) => ({ ...acc, [status]: 0 }), {});
+  const sellableOrders = orders.filter((o) => !SPEND_EXCLUDED_STATUSES.includes(o.status));
+  for (const o of orders) orderCounts[o.status] = (orderCounts[o.status] || 0) + 1;
+
+  const revenueTotal = sellableOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+  const averageOrderValue = sellableOrders.length > 0 ? revenueTotal / sellableOrders.length : 0;
+
+  const revenueByDate = new Map();
+  for (const o of sellableOrders) {
+    const date = o.created_at.slice(0, 10);
+    revenueByDate.set(date, (revenueByDate.get(date) || 0) + Number(o.total_amount || 0));
+  }
+  const revenueOverTime = lastNDates(TREND_DAYS).map((date) => ({ date, revenue: revenueByDate.get(date) || 0 }));
+
+  const orderSourceCounts = { portal: 0, whatsapp: 0 };
+  for (const o of orders) orderSourceCounts[o.source === 'whatsapp' ? 'whatsapp' : 'portal'] += 1;
+  const quoteSourceCounts = { portal: 0, whatsapp: 0 };
+  for (const q of quotes) quoteSourceCounts[q.source === 'whatsapp' ? 'whatsapp' : 'portal'] += 1;
+
+  const { data: payments, error: paymentsErr } = await supabase.from('payments').select('status, amount');
+  if (paymentsErr) throw paymentsErr;
+
+  const paymentStats = { collected: { count: 0, amount: 0 }, pendingReview: { count: 0, amount: 0 }, rejected: { count: 0, amount: 0 } };
+  const PAYMENT_BUCKET = { approved: 'collected', submitted: 'pendingReview', rejected: 'rejected' };
+  for (const p of payments) {
+    const bucket = PAYMENT_BUCKET[p.status];
+    if (!bucket) continue;
+    paymentStats[bucket].count += 1;
+    paymentStats[bucket].amount += Number(p.amount || 0);
+  }
+
   const { data: customers, error: custErr } = await supabase
     .from('users')
     .select('id, email, company_name, created_at, orders(status, total_amount)')
@@ -68,6 +119,11 @@ const getAnalyticsSummary = asyncHandler(async (req, res) => {
 
   return res.json({
     quoteFunnel: { counts, conversionRate, total: quotes.length },
+    orderFunnel: { counts: orderCounts, total: orders.length },
+    revenue: { total: revenueTotal, averageOrderValue },
+    revenueOverTime,
+    payments: paymentStats,
+    sourceBreakdown: { quotes: quoteSourceCounts, orders: orderSourceCounts },
     topProducts,
     topCategories,
     customers: {

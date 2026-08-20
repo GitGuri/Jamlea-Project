@@ -3,6 +3,7 @@ import { getPendingStaffAdmin, reviewStaffSignupAdmin } from '../../api/staff';
 import { formatDate } from '../../utils/formatters';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
+import Card from '../../components/ui/Card';
 
 export default function AdminStaffPage() {
   const [requests, setRequests] = useState([]);
@@ -43,7 +44,7 @@ export default function AdminStaffPage() {
           <EmptyState title="No pending requests" description="New staff signups will show up here for review." />
         </div>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+        <Card className="mt-6 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <tr>
@@ -65,14 +66,14 @@ export default function AdminStaffPage() {
                     <button
                       onClick={() => handleReview(request.id, 'approved')}
                       disabled={actingId === request.id}
-                      className="text-xs font-medium text-good-500 hover:underline disabled:opacity-50"
+                      className="text-xs font-medium text-good-500 transition-colors duration-150 hover:underline disabled:opacity-50"
                     >
                       Approve
                     </button>
                     <button
                       onClick={() => handleReview(request.id, 'rejected')}
                       disabled={actingId === request.id}
-                      className="ml-3 text-xs font-medium text-bad-500 hover:underline disabled:opacity-50"
+                      className="ml-3 text-xs font-medium text-bad-500 transition-colors duration-150 hover:underline disabled:opacity-50"
                     >
                       Reject
                     </button>
@@ -81,7 +82,7 @@ export default function AdminStaffPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   );

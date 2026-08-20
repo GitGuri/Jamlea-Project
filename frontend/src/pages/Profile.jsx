@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 
 export default function Profile() {
   const { user, updatePhone } = useAuth();
@@ -29,7 +30,7 @@ export default function Profile() {
       <h1 className="font-display text-xl font-semibold text-ink">Profile</h1>
       <p className="mt-1 text-sm text-slate-500">Manage your account details.</p>
 
-      <div className="mt-6 max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-card">
+      <Card className="mt-6 max-w-md p-6">
         <p className="text-sm text-slate-500">Email</p>
         <p className="font-medium text-ink">{user?.email}</p>
 
@@ -40,7 +41,7 @@ export default function Profile() {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500"
               placeholder="Include country code, e.g. 27821234567"
             />
             <p className="mt-1 text-xs text-slate-400">
@@ -56,7 +57,7 @@ export default function Profile() {
             Save
           </Button>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { downloadQuotePdf } from '../utils/generateQuotePdf';
 import StatusBadge from '../components/ui/StatusBadge';
 import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 
 export default function QuoteDetailPage() {
   const { quoteId } = useParams();
@@ -70,7 +71,7 @@ export default function QuoteDetailPage() {
         <StatusBadge status={quote.status} />
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+      <Card className="mt-6 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
             <tr>
@@ -96,9 +97,9 @@ export default function QuoteDetailPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
 
-      <div className="mt-6 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-card">
+      <Card className="mt-6 flex items-center justify-between p-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
           <p className="font-mono text-2xl font-semibold text-ink">{formatCurrency(quote.total_amount)}</p>
@@ -120,7 +121,7 @@ export default function QuoteDetailPage() {
             <p className="text-sm text-slate-500">This quote has expired and can no longer be converted.</p>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

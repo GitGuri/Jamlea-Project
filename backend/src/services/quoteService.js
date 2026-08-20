@@ -1,5 +1,6 @@
 const supabase = require('../config/supabase');
 const { notifyInternalTeam } = require('./notificationService');
+const { formatCurrency } = require('../utils/formatCurrency');
 
 // Core logic behind creating a quote, shared by the portal's POST /quotes
 // route and the WhatsApp quoteBuilding flow -- two front doors onto the same
@@ -53,7 +54,7 @@ async function createQuoteForCustomer(customerId, customerLabel, items, source =
   await notifyInternalTeam({
     type: 'quote_submitted',
     title: 'New quote submitted',
-    message: `${customerLabel} submitted quote #${quote.quote_number} for $${total_amount.toFixed(2)} via ${source}.`,
+    message: `${customerLabel} submitted quote #${quote.quote_number} for ${formatCurrency(total_amount)} via ${source}.`,
     relatedType: 'quote',
     relatedId: quote.id,
   });

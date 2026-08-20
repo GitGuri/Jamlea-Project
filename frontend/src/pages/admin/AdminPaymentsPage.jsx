@@ -4,6 +4,7 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
+import Card from '../../components/ui/Card';
 
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState([]);
@@ -44,7 +45,7 @@ export default function AdminPaymentsPage() {
           <EmptyState title="No payments yet" description="Submitted customer payments will show up here." />
         </div>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card">
+        <Card className="mt-6 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <tr>
@@ -83,14 +84,14 @@ export default function AdminPaymentsPage() {
                         <button
                           onClick={() => handleReview(payment.id, 'approved')}
                           disabled={actingId === payment.id}
-                          className="text-xs font-medium text-good-500 hover:underline disabled:opacity-50"
+                          className="text-xs font-medium text-good-500 transition-colors duration-150 hover:underline disabled:opacity-50"
                         >
                           Approve
                         </button>
                         <button
                           onClick={() => handleReview(payment.id, 'rejected')}
                           disabled={actingId === payment.id}
-                          className="ml-3 text-xs font-medium text-bad-500 hover:underline disabled:opacity-50"
+                          className="ml-3 text-xs font-medium text-bad-500 transition-colors duration-150 hover:underline disabled:opacity-50"
                         >
                           Reject
                         </button>
@@ -101,7 +102,7 @@ export default function AdminPaymentsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   );
