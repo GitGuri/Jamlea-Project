@@ -35,7 +35,7 @@ const DOT_STYLES = {
 // wording different from the raw DB value (e.g. quotes are "saved" from the
 // customer's point of view, even though the stored status is 'submitted').
 const LABELS = {
-  submitted: 'Quote saved',
+  submitted: 'Quote Finalized',
   payment_submitted: 'Payment submitted',
   payment_approved: 'Payment approved',
   payment_rejected: 'Payment rejected',

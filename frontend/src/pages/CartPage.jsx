@@ -115,7 +115,7 @@ export default function CartPage() {
             Download quote
           </Button>
           <Button onClick={handleSubmit} loading={submitting}>
-            Save quote
+            Finalize quote
           </Button>
         </div>
       </Card>
