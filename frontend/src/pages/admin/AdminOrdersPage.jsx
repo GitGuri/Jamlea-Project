@@ -40,6 +40,7 @@ export default function AdminOrdersPage() {
           <option value="all">All sources</option>
           <option value="portal">Portal</option>
           <option value="whatsapp">WhatsApp</option>
+          <option value="admin">Staff</option>
         </select>
       </div>
 

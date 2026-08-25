@@ -182,7 +182,12 @@ export default function Register() {
         )}
       </div>
 
-      <p className="mt-6 text-center text-xs font-light text-slate-300">Powered by Quantilytix</p>
+      <p className="mt-6 text-center text-xs font-light text-slate-300">
+        Powered by Quantilytix ·{' '}
+        <Link to="/privacy" className="underline hover:text-slate-100">
+          Privacy Policy
+        </Link>
+      </p>
     </AuthLayout>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getAllQuotesAdmin } from '../../api/quotes';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -7,6 +7,7 @@ import SourceBadge from '../../components/ui/SourceBadge';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
 
 export default function AdminQuotesPage() {
   const [quotes, setQuotes] = useState([]);
@@ -32,15 +33,21 @@ export default function AdminQuotesPage() {
           <h1 className="font-display text-xl font-semibold text-ink">Quotes</h1>
           <p className="mt-1 text-sm text-slate-500">Every quote submitted across all customers.</p>
         </div>
-        <select
-          value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value)}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500"
-        >
-          <option value="all">All sources</option>
-          <option value="portal">Portal</option>
-          <option value="whatsapp">WhatsApp</option>
-        </select>
+        <div className="flex items-center gap-3">
+          <select
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500"
+          >
+            <option value="all">All sources</option>
+            <option value="portal">Portal</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="admin">Staff</option>
+          </select>
+          <Link to="/admin/quotes/new">
+            <Button>New quote</Button>
+          </Link>
+        </div>
       </div>
 
       {loading ? (

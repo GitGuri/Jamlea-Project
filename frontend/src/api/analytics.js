@@ -1,3 +1,4 @@
 import apiClient from './client';
 
-export const getAnalyticsSummary = () => apiClient.get('/analytics/admin/summary');
+export const getAnalyticsSummary = ({ from, to } = {}) =>
+  apiClient.get('/analytics/admin/summary', { params: { from, to } });

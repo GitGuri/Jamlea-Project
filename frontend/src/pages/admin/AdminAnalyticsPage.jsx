@@ -3,6 +3,54 @@ import { getAnalyticsSummary } from '../../api/analytics';
 import { formatCurrency } from '../../utils/formatters';
 import Spinner from '../../components/ui/Spinner';
 import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+
+const toDateStr = (d) => d.toISOString().slice(0, 10);
+const daysAgo = (n) => toDateStr(new Date(Date.now() - n * 24 * 60 * 60 * 1000));
+const todayStr = () => toDateStr(new Date());
+
+const PRESETS = [
+  { label: 'Last 7 days', from: () => daysAgo(6), to: todayStr },
+  { label: 'Last 30 days', from: () => daysAgo(29), to: todayStr },
+  { label: 'Last 90 days', from: () => daysAgo(89), to: todayStr },
+  { label: 'This year', from: () => `${new Date().getFullYear()}-01-01`, to: todayStr },
+  // 3 years comfortably covers everything for an app this young without
+  // zero-filling the revenue chart across an unbounded/arbitrary history.
+  { label: 'All time', from: () => daysAgo(3 * 365), to: todayStr },
+];
+
+const DATE_INPUT_CLASS =
+  'rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500';
+
+function DateRangeFilter({ from, to, onChange }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {PRESETS.map((p) => (
+        <Button key={p.label} variant="secondary" onClick={() => onChange(p.from(), p.to())}>
+          {p.label}
+        </Button>
+      ))}
+      <div className="ml-2 flex items-center gap-2">
+        <input
+          type="date"
+          value={from}
+          max={to}
+          onChange={(e) => onChange(e.target.value, to)}
+          className={DATE_INPUT_CLASS}
+        />
+        <span className="text-sm text-slate-400">to</span>
+        <input
+          type="date"
+          value={to}
+          min={from}
+          max={todayStr()}
+          onChange={(e) => onChange(from, e.target.value)}
+          className={DATE_INPUT_CLASS}
+        />
+      </div>
+    </div>
+  );
+}
 
 const ACCENT_CLASSES = {
   navy: 'border-l-teal-500',
@@ -81,7 +129,7 @@ function SplitBar({ label, a, b, aLabel, bLabel }) {
 // this is the only chart in the app, so pulling one in for a single polyline
 // isn't worth the dependency. Fixed viewBox, scaled to fit; renders a flat
 // zero line rather than crashing when there's no revenue yet.
-function RevenueTrendChart({ data }) {
+function RevenueTrendChart({ data, rangeLabel }) {
   const width = 720;
   const height = 220;
   const padding = { top: 16, right: 16, bottom: 28, left: 16 };
@@ -102,7 +150,7 @@ function RevenueTrendChart({ data }) {
   const formatDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label="Revenue over the last 30 days">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label={`Revenue from ${rangeLabel}`}>
       <defs>
         <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="var(--color-teal-500)" stopOpacity="0.25" />
@@ -132,37 +180,53 @@ function RevenueTrendChart({ data }) {
 export default function AdminAnalyticsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [from, setFrom] = useState(() => daysAgo(29));
+  const [to, setTo] = useState(todayStr);
 
   useEffect(() => {
-    getAnalyticsSummary()
-      .then(({ data }) => setData(data))
+    setLoading(true);
+    getAnalyticsSummary({ from, to })
+      .then(({ data }) => {
+        setData(data);
+        // Sync back in case the backend collapsed a swapped/invalid range --
+        // keeps the visible inputs truthful to what was actually applied.
+        setFrom(data.range.from);
+        setTo(data.range.to);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [from, to]);
 
-  if (loading) return <Spinner />;
+  if (loading && !data) return <Spinner />;
   if (!data) return <p className="text-sm text-slate-500">Could not load analytics.</p>;
 
-  const { quoteFunnel, orderFunnel, revenue, revenueOverTime, payments, sourceBreakdown, topProducts, topCategories, customers } = data;
+  const { quoteFunnel, orderFunnel, revenue, revenueOverTime, payments, sourceBreakdown, topProducts, topCategories, customers, range } = data;
+  const rangeLabel = `${range.from} to ${range.to}`;
 
   return (
     <div>
-      <h1 className="font-display text-xl font-semibold text-ink">Analytics</h1>
-      <p className="mt-1 text-sm text-slate-500">Revenue, order health, top sellers, and customer activity.</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-xl font-semibold text-ink">Analytics</h1>
+          <p className="mt-1 text-sm text-slate-500">Revenue, order health, top sellers, and customer activity.</p>
+        </div>
+        <DateRangeFilter from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
+      </div>
 
+      <div className={`transition-opacity duration-200 ${loading ? 'opacity-60' : 'opacity-100'}`}>
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <StatTile label="Total revenue" value={formatCurrency(revenue.total)} accent="navy" />
         <StatTile label="Avg order value" value={formatCurrency(revenue.averageOrderValue)} accent="navy" />
         <StatTile label="Conversion rate" value={`${Math.round(quoteFunnel.conversionRate * 100)}%`} accent="gold" />
         <StatTile label="Customers" value={customers.total} accent="gold" />
-        <StatTile label="New customers (30d)" value={customers.newLast30Days} accent="gold" />
+        <StatTile label="New customers" value={customers.newCustomersInRange} accent="gold" />
         <StatTile label="Payments collected" value={formatCurrency(payments.collected.amount)} accent="good" />
       </div>
 
       <Card className="mt-6 p-5">
-        <h2 className="font-display text-base font-semibold text-ink">Revenue -- last 30 days</h2>
+        <h2 className="font-display text-base font-semibold text-ink">Revenue -- {rangeLabel}</h2>
         <p className="mt-1 text-xs text-slate-500">Non-cancelled orders, by day placed.</p>
         <div className="mt-4">
-          <RevenueTrendChart data={revenueOverTime} />
+          <RevenueTrendChart data={revenueOverTime} rangeLabel={rangeLabel} />
         </div>
       </Card>
 
@@ -266,7 +330,7 @@ export default function AdminAnalyticsPage() {
 
       <Card className="mt-6 p-5">
         <h2 className="font-display text-base font-semibold text-ink">Top customers</h2>
-        <p className="mt-1 text-xs text-slate-500">By lifetime spend (cancelled orders excluded).</p>
+        <p className="mt-1 text-xs text-slate-500">By spend in the selected range (cancelled orders excluded).</p>
         {customers.topBySpend.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">No customers yet.</p>
         ) : (
@@ -290,6 +354,7 @@ export default function AdminAnalyticsPage() {
           </table>
         )}
       </Card>
+      </div>
     </div>
   );
 }

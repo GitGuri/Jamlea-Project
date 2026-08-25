@@ -9,6 +9,7 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AuthCallback from './pages/AuthCallback';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ProductsPage from './pages/ProductsPage';
 import CartPage from './pages/CartPage';
 import QuotesPage from './pages/QuotesPage';
@@ -19,6 +20,7 @@ import NotificationsPage from './pages/NotificationsPage';
 import Profile from './pages/Profile';
 import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminQuotesPage from './pages/admin/AdminQuotesPage';
+import AdminNewQuotePage from './pages/admin/AdminNewQuotePage';
 import AdminQuoteDetailPage from './pages/admin/AdminQuoteDetailPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminOrderDetailPage from './pages/admin/AdminOrderDetailPage';
@@ -49,6 +51,7 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
             <Route
               element={
@@ -85,6 +88,7 @@ export default function App() {
             >
               <Route path="/admin/products" element={<AdminProductsPage />} />
               <Route path="/admin/quotes" element={<AdminQuotesPage />} />
+              <Route path="/admin/quotes/new" element={<AdminNewQuotePage />} />
               <Route path="/admin/quotes/:quoteId" element={<AdminQuoteDetailPage />} />
               <Route path="/admin/orders" element={<AdminOrdersPage />} />
               <Route path="/admin/orders/:id" element={<AdminOrderDetailPage />} />

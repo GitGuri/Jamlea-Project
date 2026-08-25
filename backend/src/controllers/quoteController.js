@@ -12,6 +12,26 @@ const createQuote = asyncHandler(async (req, res) => {
   return res.status(201).json({ message: 'Quote created successfully', ...result });
 });
 
+// Admin/sales_rep only: same pipeline as createQuote, just for a customer
+// the staff member picks instead of themselves.
+const createQuoteForCustomerAdmin = asyncHandler(async (req, res) => {
+  const { customer_id, items } = req.body;
+
+  const { data: customer, error: custErr } = await supabase
+    .from('users')
+    .select('email, company_name')
+    .eq('id', customer_id)
+    .eq('role', 'customer')
+    .single();
+  if (custErr || !customer) return res.status(404).json({ error: 'Customer not found' });
+
+  const customerLabel = customer.company_name || customer.email;
+  const result = await createQuoteForCustomer(customer_id, customerLabel, items, 'admin');
+  if (result.error) return res.status(result.status).json({ error: result.error });
+
+  return res.status(201).json({ message: 'Quote created successfully', ...result });
+});
+
 const getCustomerQuotes = asyncHandler(async (req, res) => {
   const { data, error } = await supabase
     .from('quotes')
@@ -78,11 +98,30 @@ const getQuoteById = asyncHandler(async (req, res) => {
   return res.json(data);
 });
 
+// Customers convert their own quotes (source 'portal'). Staff can convert
+// *any* customer's quote on their behalf -- e.g. a customer calls in and
+// asks staff to finalize it -- which needs the quote's actual owner looked
+// up instead of assuming req.user is the customer.
 const convertQuoteToOrder = asyncHandler(async (req, res) => {
   const { quoteId } = req.params;
-  const customerLabel = req.user.company_name || req.user.email;
+  const isStaff = ['admin', 'sales_rep'].includes(req.user.role);
 
-  const result = await convertQuoteForCustomer(req.user.id, customerLabel, quoteId, 'portal');
+  let customerId = req.user.id;
+  let customerLabel = req.user.company_name || req.user.email;
+
+  if (isStaff) {
+    const { data: quote, error: quoteErr } = await supabase
+      .from('quotes')
+      .select('customer_id, users(email, company_name)')
+      .eq('id', quoteId)
+      .single();
+    if (quoteErr || !quote) return res.status(404).json({ error: 'Quote not found.' });
+
+    customerId = quote.customer_id;
+    customerLabel = quote.users?.company_name || quote.users?.email || customerLabel;
+  }
+
+  const result = await convertQuoteForCustomer(customerId, customerLabel, quoteId, isStaff ? 'admin' : 'portal');
   if (result.error) return res.status(result.status).json({ error: result.error });
 
   return res.status(201).json({ message: 'Order created successfully', ...result });
@@ -90,6 +129,7 @@ const convertQuoteToOrder = asyncHandler(async (req, res) => {
 
 module.exports = {
   createQuote,
+  createQuoteForCustomerAdmin,
   getCustomerQuotes,
   getAllQuotesAdmin,
   getQuoteById,

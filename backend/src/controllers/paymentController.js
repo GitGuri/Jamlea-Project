@@ -6,15 +6,35 @@ const { submitPaymentForCustomer } = require('../services/paymentService');
 // Customer: submit a bank-transfer/EFT proof of payment against one of their
 // own approved orders. There's no payment gateway here -- staff manually
 // cross-check the reference against their bank statement and approve/reject.
+//
+// Staff (admin/sales_rep) can also submit a payment on a customer's behalf
+// -- same idea as the staff branch in quoteController.js's
+// convertQuoteToOrder -- so the customer is resolved from the order itself
+// instead of assuming req.user is the customer.
 const createPayment = asyncHandler(async (req, res) => {
   const { order_id, method, reference, amount, note } = req.body;
-  const customerLabel = req.user.company_name || req.user.email;
+  const isStaff = ['admin', 'sales_rep'].includes(req.user.role);
+
+  let customerId = req.user.id;
+  let customerLabel = req.user.company_name || req.user.email;
+
+  if (isStaff) {
+    const { data: order, error: orderErr } = await supabase
+      .from('orders')
+      .select('customer_id, users(email, company_name)')
+      .eq('id', order_id)
+      .single();
+    if (orderErr || !order) return res.status(404).json({ error: 'Order not found' });
+
+    customerId = order.customer_id;
+    customerLabel = order.users?.company_name || order.users?.email || customerLabel;
+  }
 
   const result = await submitPaymentForCustomer(
-    req.user.id,
+    customerId,
     customerLabel,
     { orderId: order_id, method, reference, amount, note },
-    'portal'
+    isStaff ? 'admin' : 'portal'
   );
   if (result.error) return res.status(result.status).json({ error: result.error });
 

@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getOrderById, updateOrderStatus } from '../../api/orders';
+import { createPayment } from '../../api/payments';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
 import Card from '../../components/ui/Card';
+import PaymentForm from '../../components/PaymentForm';
 
 // Mirrors ORDER_TRANSITIONS in backend/src/controllers/orderController.js --
 // only 'approved' and 'cancelled' run through the stock-managing RPCs, so
@@ -25,6 +28,7 @@ export default function AdminOrderDetailPage() {
   const [nextStatus, setNextStatus] = useState('');
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const load = () =>
     getOrderById(id).then(({ data }) => {
@@ -50,10 +54,25 @@ export default function AdminOrderDetailPage() {
     }
   };
 
+  const handleSubmitPayment = async (payload) => {
+    await createPayment({ order_id: order.id, ...payload });
+    setShowPaymentModal(false);
+    await load();
+  };
+
   if (loading) return <Spinner />;
   if (!order) return <p className="text-sm text-slate-500">Order not found.</p>;
 
   const nextOptions = ORDER_TRANSITIONS[order.status] || [];
+
+  // Only one payment can be actively submitted/approved at a time (enforced
+  // server-side); a rejected one doesn't block resubmission -- same rule as
+  // the customer's own OrderDetailPage.jsx.
+  const activePayment = order.payments?.find((p) => p.status === 'submitted' || p.status === 'approved');
+  const latestPayment = order.payments?.length
+    ? [...order.payments].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
+    : null;
+  const canSubmitPayment = order.status === 'approved' && !activePayment;
 
   return (
     <div>
@@ -70,7 +89,11 @@ export default function AdminOrderDetailPage() {
             {order.users?.company_name || order.users?.email} · Placed {formatDate(order.created_at)}
           </p>
         </div>
-        <StatusBadge status={order.status} />
+        <div className="flex items-center gap-2">
+          {latestPayment?.status === 'rejected' && !activePayment && <StatusBadge status="payment_rejected" />}
+          {activePayment && <StatusBadge status={`payment_${activePayment.status}`} />}
+          <StatusBadge status={order.status} />
+        </div>
       </div>
 
       <Card className="mt-6 overflow-hidden">
@@ -108,6 +131,7 @@ export default function AdminOrderDetailPage() {
         </div>
         <div className="flex items-center gap-3">
           {error && <p className="text-sm text-bad-500">{error}</p>}
+          {canSubmitPayment && <Button onClick={() => setShowPaymentModal(true)}>Submit payment</Button>}
           {nextOptions.length === 0 ? (
             <p className="text-sm text-slate-500">This order is in a final state.</p>
           ) : (
@@ -131,6 +155,16 @@ export default function AdminOrderDetailPage() {
           )}
         </div>
       </Card>
+
+      {showPaymentModal && (
+        <Modal title="Submit payment" onClose={() => setShowPaymentModal(false)}>
+          <PaymentForm
+            defaultAmount={order.total_amount}
+            onSubmit={handleSubmitPayment}
+            onCancel={() => setShowPaymentModal(false)}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

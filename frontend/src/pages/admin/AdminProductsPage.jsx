@@ -17,7 +17,7 @@ export default function AdminProductsPage() {
   const [total, setTotal] = useState(0);
   const limit = 20;
 
-  const [modalMode, setModalMode] = useState(null); // null | 'create' | 'edit' | 'import'
+  const [modalMode, setModalMode] = useState(null); // null | 'create' | 'edit' | 'import' | 'supplier'
   const [editingProduct, setEditingProduct] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
@@ -47,6 +47,10 @@ export default function AdminProductsPage() {
   const openEdit = (product) => {
     setEditingProduct(product);
     setModalMode('edit');
+  };
+  const openSupplier = (product) => {
+    setEditingProduct(product);
+    setModalMode('supplier');
   };
   const openImport = () => setModalMode('import');
   const closeModal = () => setModalMode(null);
@@ -126,6 +130,7 @@ export default function AdminProductsPage() {
                   <th className="px-4 py-3">Price</th>
                   <th className="px-4 py-3">Stock</th>
                   <th className="px-4 py-3">Availability</th>
+                  <th className="px-4 py-3">Supplier</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -140,6 +145,18 @@ export default function AdminProductsPage() {
                     <td className="px-4 py-3 font-mono text-ink">{formatCurrency(product.unit_price)}</td>
                     <td className="px-4 py-3 text-slate-600">{product.stock_quantity}</td>
                     <td className="px-4 py-3 text-slate-600 capitalize">{product.availability}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {product.supplier_name ? (
+                        <button
+                          onClick={() => openSupplier(product)}
+                          className="font-medium text-teal-600 transition-colors duration-150 hover:underline"
+                        >
+                          {product.supplier_name}
+                        </button>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => openEdit(product)}
@@ -186,6 +203,32 @@ export default function AdminProductsPage() {
       {modalMode === 'import' && (
         <Modal title="Import products from file" onClose={closeModal} wide>
           <ProductImportModal onDone={handleImportDone} />
+        </Modal>
+      )}
+
+      {modalMode === 'supplier' && editingProduct && (
+        <Modal title="Supplier details" onClose={closeModal}>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">For {editingProduct.name}</p>
+            <dl className="space-y-3 text-sm">
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-slate-500">Name</dt>
+                <dd className="mt-0.5 text-ink">{editingProduct.supplier_name || 'Not provided'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-slate-500">Location</dt>
+                <dd className="mt-0.5 text-ink">{editingProduct.supplier_location || 'Not provided'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-slate-500">Phone</dt>
+                <dd className="mt-0.5 text-ink">{editingProduct.supplier_phone || 'Not provided'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-slate-500">Email</dt>
+                <dd className="mt-0.5 text-ink">{editingProduct.supplier_email || 'Not provided'}</dd>
+              </div>
+            </dl>
+          </div>
         </Modal>
       )}
     </div>

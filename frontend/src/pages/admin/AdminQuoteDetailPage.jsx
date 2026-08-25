@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getQuoteById, updateQuoteStatus } from '../../api/quotes';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { getQuoteById, updateQuoteStatus, convertQuoteToOrder } from '../../api/quotes';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Spinner from '../../components/ui/Spinner';
@@ -9,9 +9,11 @@ import Card from '../../components/ui/Card';
 
 export default function AdminQuoteDetailPage() {
   const { quoteId } = useParams();
+  const navigate = useNavigate();
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [error, setError] = useState('');
 
   const load = () => getQuoteById(quoteId).then(({ data }) => setQuote(data));
@@ -34,10 +36,23 @@ export default function AdminQuoteDetailPage() {
     }
   };
 
+  const handleConvert = async () => {
+    setError('');
+    setConverting(true);
+    try {
+      const { data } = await convertQuoteToOrder(quoteId);
+      navigate(`/admin/orders/${data.orderId}`);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not convert this quote.');
+      setConverting(false);
+    }
+  };
+
   if (loading) return <Spinner />;
   if (!quote) return <p className="text-sm text-slate-500">Quote not found.</p>;
 
   const canExpire = ['draft', 'submitted'].includes(quote.status);
+  const canConvert = quote.status === 'submitted';
 
   return (
     <div>
@@ -95,6 +110,11 @@ export default function AdminQuoteDetailPage() {
           {canExpire && (
             <Button variant="danger" onClick={handleExpire} loading={updating}>
               Mark expired
+            </Button>
+          )}
+          {canConvert && (
+            <Button onClick={handleConvert} loading={converting}>
+              Convert to order
             </Button>
           )}
         </div>

@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const router = express.Router();
 const {
   createQuote,
+  createQuoteForCustomerAdmin,
   getCustomerQuotes,
   getAllQuotesAdmin,
   getQuoteById,
@@ -18,7 +19,20 @@ const createQuoteRules = [
   body('items.*.quantity').isInt({ min: 1 }).withMessage('Each item needs a quantity of at least 1'),
 ];
 
+const createQuoteForCustomerRules = [
+  body('customer_id').isUUID().withMessage('A valid customer_id is required'),
+  ...createQuoteRules,
+];
+
 router.post('/', authenticateToken, createQuoteRules, validate, createQuote);
+router.post(
+  '/admin/for-customer',
+  authenticateToken,
+  requireRole(['admin', 'sales_rep']),
+  createQuoteForCustomerRules,
+  validate,
+  createQuoteForCustomerAdmin
+);
 router.get('/my-quotes', authenticateToken, getCustomerQuotes);
 router.get('/admin/all', authenticateToken, requireRole(['admin', 'sales_rep']), getAllQuotesAdmin);
 router.get('/:quoteId', authenticateToken, getQuoteById);

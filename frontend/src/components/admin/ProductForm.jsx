@@ -14,6 +14,10 @@ const EMPTY = {
   availability: 'local',
   lead_time_days: '',
   min_order_qty: '',
+  supplier_name: '',
+  supplier_location: '',
+  supplier_email: '',
+  supplier_phone: '',
 };
 
 const FIELD_CLASS =
@@ -33,6 +37,10 @@ export default function ProductForm({ initialProduct, onSubmit, onCancel }) {
           availability: initialProduct.availability,
           lead_time_days: initialProduct.lead_time_days,
           min_order_qty: initialProduct.min_order_qty,
+          supplier_name: initialProduct.supplier_name || '',
+          supplier_location: initialProduct.supplier_location || '',
+          supplier_email: initialProduct.supplier_email || '',
+          supplier_phone: initialProduct.supplier_phone || '',
         }
       : EMPTY
   );
@@ -84,6 +92,10 @@ export default function ProductForm({ initialProduct, onSubmit, onCancel }) {
         lead_time_days: Number(form.lead_time_days),
         min_order_qty: Number(form.min_order_qty),
         image_url: imageUrl,
+        supplier_name: form.supplier_name,
+        supplier_location: form.supplier_location,
+        supplier_email: form.supplier_email || null,
+        supplier_phone: form.supplier_phone,
       });
     } catch (err) {
       setError(err.response?.data?.error || 'Could not save this product.');
@@ -170,6 +182,38 @@ export default function ProductForm({ initialProduct, onSubmit, onCancel }) {
             onChange={update('min_order_qty')}
             className={FIELD_CLASS}
           />
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Supplier details</p>
+        <div className="mt-2 grid grid-cols-2 gap-4">
+          <div>
+            <label className={LABEL_CLASS}>Supplier name</label>
+            <input required value={form.supplier_name} onChange={update('supplier_name')} className={FIELD_CLASS} />
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>Supplier location</label>
+            <input
+              required
+              value={form.supplier_location}
+              onChange={update('supplier_location')}
+              className={FIELD_CLASS}
+            />
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>Supplier phone</label>
+            <input required value={form.supplier_phone} onChange={update('supplier_phone')} className={FIELD_CLASS} />
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>Supplier email (optional)</label>
+            <input
+              type="email"
+              value={form.supplier_email}
+              onChange={update('supplier_email')}
+              className={FIELD_CLASS}
+            />
+          </div>
         </div>
       </div>
 

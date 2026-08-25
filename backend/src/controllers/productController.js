@@ -41,6 +41,10 @@ const WRITABLE_FIELDS = [
   'lead_time_days',
   'min_order_qty',
   'image_url',
+  'supplier_name',
+  'supplier_location',
+  'supplier_email',
+  'supplier_phone',
 ];
 
 function pickWritableFields(body) {

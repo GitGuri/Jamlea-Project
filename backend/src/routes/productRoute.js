@@ -69,6 +69,10 @@ const createProductRules = [
   body('availability').isIn(['local', 'national', 'global']),
   body('lead_time_days').isInt({ min: 0 }),
   body('min_order_qty').isInt({ min: 1 }),
+  body('supplier_name').isString().notEmpty(),
+  body('supplier_location').isString().notEmpty(),
+  body('supplier_phone').isString().notEmpty(),
+  body('supplier_email').optional({ values: 'falsy' }).isEmail(),
 ];
 
 const updateProductRules = [
@@ -80,6 +84,10 @@ const updateProductRules = [
   body('availability').optional().isIn(['local', 'national', 'global']),
   body('lead_time_days').optional().isInt({ min: 0 }),
   body('min_order_qty').optional().isInt({ min: 1 }),
+  body('supplier_name').optional().isString().notEmpty(),
+  body('supplier_location').optional().isString().notEmpty(),
+  body('supplier_phone').optional().isString().notEmpty(),
+  body('supplier_email').optional({ values: 'falsy' }).isEmail(),
 ];
 
 router.post(
