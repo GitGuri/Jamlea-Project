@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
 const { normalizePhone, findUserByPhone } = require('../services/whatsappConversationService');
+const { logActivity } = require('../services/activityLogService');
 
 // Orders in these statuses don't represent real revenue -- excluded from
 // total_spent the same way a "completed sales" figure would exclude them.
@@ -134,6 +135,15 @@ const createCustomerAdmin = asyncHandler(async (req, res) => {
     .select('id, email, company_name, full_name, phone')
     .single();
   if (profileError) throw profileError;
+
+  await logActivity({
+    actorId: req.user.id,
+    actorLabel: req.user.company_name || req.user.email,
+    action: 'customer.created',
+    entityType: 'customer',
+    entityId: profile.id,
+    description: `${req.user.company_name || req.user.email} created a new customer account for ${profile.company_name || profile.email} (${profile.email}).`,
+  });
 
   return res.status(201).json(profile);
 });

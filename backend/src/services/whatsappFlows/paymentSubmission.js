@@ -2,6 +2,7 @@ const supabase = require('../../config/supabase');
 const { sendList, sendText, sendButtons } = require('../../config/whatsapp');
 const { formatCurrency } = require('../../utils/formatCurrency');
 const { submitPaymentForCustomer } = require('../paymentService');
+const { flagManualPayment } = require('../adminReviewService');
 
 const METHOD_BUTTONS = [
   { id: 'payment_method_bank_transfer', title: 'Bank transfer/EFT' },
@@ -14,6 +15,14 @@ const REVIEW_BUTTONS = [
   { id: 'payment_cancel', title: 'Cancel' },
 ];
 
+// Same two payable statuses paymentService.js's submitPaymentForCustomer
+// accepts -- the existing manual-approval flow (pending_approval -> approved)
+// and the newer fast-checkout path (straight into stock_reserved). Kept in
+// sync with that PAYABLE_STATUSES list rather than just 'approved', so a
+// fast-checkout order isn't invisible to the WhatsApp payment picker even
+// though the backend would happily accept a manual payment against it.
+const PAYABLE_STATUSES = ['approved', 'stock_reserved'];
+
 async function start(conversation) {
   const { phone, user_id } = conversation;
 
@@ -21,7 +30,7 @@ async function start(conversation) {
     .from('orders')
     .select('id, order_number, total_amount, created_at, payments(status)')
     .eq('customer_id', user_id)
-    .eq('status', 'approved')
+    .in('status', PAYABLE_STATUSES)
     .order('created_at', { ascending: false })
     .limit(10); // list cap -- most recent 10, same simplification as quote picking
 
@@ -38,7 +47,7 @@ async function start(conversation) {
   );
 
   if (!payable.length) {
-    await sendText(phone, "You don't have any approved orders awaiting payment right now.");
+    await sendText(phone, "You don't have any orders awaiting payment right now.");
     const { sendMenu } = require('./mainMenu');
     await sendMenu(phone);
     return { newState: 'main_menu', newContext: {} };
@@ -114,6 +123,16 @@ async function handleConfirmSubmit(conversation, context) {
     return { newState: 'main_menu', newContext: {} };
   }
 
+  // Same rule OrderDetailPage.jsx follows: a manual payment against a
+  // stock_reserved order (the customer choosing bank transfer instead of
+  // PayFast) needs its own admin_reviews row so it surfaces in the Review
+  // Queue, not just the Payments page -- a stock_reserved order otherwise
+  // has no admin-facing "this is now waiting on you" signal the way a plain
+  // 'approved' order's Payments-page entry already provides.
+  if (context.orderStatus === 'stock_reserved') {
+    await flagManualPayment(context.orderId);
+  }
+
   await sendText(
     phone,
     `✅ Payment submitted for order #${result.orderNumber}! Our team will review it against our bank statement and confirm shortly.`
@@ -137,10 +156,10 @@ async function handle(conversation, message) {
     const orderId = choice.slice('pay_order_'.length);
     const { data: order } = await supabase
       .from('orders')
-      .select('id, order_number')
+      .select('id, order_number, status')
       .eq('id', orderId)
       .eq('customer_id', conversation.user_id)
-      .eq('status', 'approved')
+      .in('status', PAYABLE_STATUSES)
       .maybeSingle();
 
     if (!order) {
@@ -154,7 +173,7 @@ async function handle(conversation, message) {
     });
     return {
       newState: 'payment_awaiting_method',
-      newContext: { orderId: order.id, orderNumber: order.order_number },
+      newContext: { orderId: order.id, orderNumber: order.order_number, orderStatus: order.status },
     };
   }
 

@@ -33,7 +33,7 @@ async function run() {
 
   const { data: orders, error: ordersErr } = await supabase
     .from('orders')
-    .select('id, order_number, customer_id, users(email)')
+    .select('id, order_number, customer_id, users(email, phone)')
     .in('id', orderIds);
   if (ordersErr) {
     console.error('Reservations released, but could not load orders to notify:', ordersErr.message);
@@ -50,15 +50,26 @@ async function run() {
       relatedType: 'order',
       relatedId: order.id,
       email: order.users?.email,
+      phone: order.users?.phone,
     });
   }
 
   console.log(`Released ${orderIds.length} expired reservation(s): ${orderIds.join(', ')}`);
 }
 
+// No process.exit() here on purpose: notifyUser's email/WhatsApp sends are
+// fire-and-forget (see notificationService.js) precisely because most
+// callers are long-running servers that don't need to wait on them -- but
+// this script is the one caller that's about to terminate on its own, so
+// forcing an immediate exit would kill those sends mid-flight before they
+// ever left the process. Setting exitCode and letting the event loop drain
+// naturally means Node only exits once every pending send has actually
+// settled.
 run()
-  .then(() => process.exit(process.exitCode || 0))
+  .then(() => {
+    process.exitCode = process.exitCode || 0;
+  })
   .catch((err) => {
     console.error('releaseExpiredReservations job crashed:', err);
-    process.exit(1);
+    process.exitCode = 1;
   });

@@ -27,6 +27,9 @@ export default function AdminNewQuotePage() {
   const [productQuery, setProductQuery] = useState('');
   const [productResults, setProductResults] = useState([]);
 
+  const [allCustomers, setAllCustomers] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
+
   const [items, setItems] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -52,6 +55,14 @@ export default function AdminNewQuotePage() {
     }, 300);
     return () => clearTimeout(timeout);
   }, [productQuery]);
+
+  // Full lists for the "pick from all" dropdowns, loaded once -- separate
+  // from the debounced-search results above, which only ever hold a
+  // handful of matches at a time.
+  useEffect(() => {
+    getAllCustomersAdmin({ limit: 100 }).then(({ data }) => setAllCustomers(data.data));
+    getProducts({ limit: 100 }).then(({ data }) => setAllProducts(data.data));
+  }, []);
 
   const handleCreateCustomer = async () => {
     setCustomerError('');
@@ -188,12 +199,29 @@ export default function AdminNewQuotePage() {
           </div>
         ) : (
           <div className="mt-3">
+            <select
+              value=""
+              onChange={(e) => {
+                const customer = allCustomers.find((c) => c.id === e.target.value);
+                if (customer) setSelectedCustomer(customer);
+              }}
+              className={SEARCH_INPUT_CLASS}
+            >
+              <option value="">Choose a registered customer...</option>
+              {allCustomers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company_name || c.email}
+                  {c.company_name ? ` (${c.email})` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-slate-400">or search instead</p>
             <input
               type="text"
               value={customerQuery}
               onChange={(e) => setCustomerQuery(e.target.value)}
               placeholder="Search by email or company name"
-              className={SEARCH_INPUT_CLASS}
+              className={`${SEARCH_INPUT_CLASS} mt-1`}
             />
             {customerResults.length > 0 && (
               <div className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
@@ -225,12 +253,28 @@ export default function AdminNewQuotePage() {
       <Card className="mt-6 p-5">
         <h2 className="font-display text-base font-semibold text-ink">Products</h2>
         <div className="mt-3">
+          <select
+            value=""
+            onChange={(e) => {
+              const product = allProducts.find((p) => p.id === e.target.value);
+              if (product) addItem(product);
+            }}
+            className={SEARCH_INPUT_CLASS}
+          >
+            <option value="">Choose a product...</option>
+            {allProducts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.sku}) -- {formatCurrency(p.unit_price)}
+              </option>
+            ))}
+          </select>
+          <p className="mt-2 text-xs text-slate-400">or search instead</p>
           <input
             type="text"
             value={productQuery}
             onChange={(e) => setProductQuery(e.target.value)}
             placeholder="Search by name or SKU"
-            className={SEARCH_INPUT_CLASS}
+            className={`${SEARCH_INPUT_CLASS} mt-1`}
           />
           {productResults.length > 0 && (
             <div className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">

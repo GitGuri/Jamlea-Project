@@ -87,7 +87,7 @@ async function reviewPayment(paymentId, status, reviewerId) {
 
   const { data: payment, error: findErr } = await supabase
     .from('payments')
-    .select('id, status, customer_id, order_id, users!payments_customer_id_fkey(email)')
+    .select('id, status, customer_id, order_id, users!payments_customer_id_fkey(email, company_name, phone), orders(order_number)')
     .eq('id', paymentId)
     .single();
 
@@ -108,14 +108,21 @@ async function reviewPayment(paymentId, status, reviewerId) {
       userId: payment.customer_id,
       type: 'general',
       title: 'Payment approved',
-      message: `Your payment for order ${payment.order_id} has been approved. Thank you!`,
+      message: `Your payment for order #${payment.orders?.order_number} has been approved. Thank you!`,
       relatedType: 'payment',
       relatedId: paymentId,
       email: payment.users?.email,
+      phone: payment.users?.phone,
     });
   }
 
-  return { paymentId, status };
+  return {
+    paymentId,
+    status,
+    orderId: payment.order_id,
+    orderNumber: payment.orders?.order_number,
+    customerLabel: payment.users?.company_name || payment.users?.email,
+  };
 }
 
 module.exports = { submitPaymentForCustomer, reviewPayment };

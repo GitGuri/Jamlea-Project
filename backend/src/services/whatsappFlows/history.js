@@ -162,9 +162,13 @@ async function sendOrderDetail(phone, order) {
   const extra = items.length > MAX_PREVIEW_LINES ? `\n+${items.length - MAX_PREVIEW_LINES} more` : '';
 
   const hasActivePayment = order.payments?.some((p) => p.status === 'submitted' || p.status === 'approved');
+  // 'approved' (manual-approval flow) and 'stock_reserved' (fast-checkout
+  // flow) are the same two payable statuses paymentSubmission.js's picker
+  // accepts -- see PAYABLE_STATUSES there.
+  const isPayable = ['approved', 'stock_reserved'].includes(order.status);
   const paymentNudge =
-    order.status === 'approved' && !hasActivePayment
-      ? '\n\nThis order is approved and awaiting payment -- pick "Submit a payment" from the main menu.'
+    isPayable && !hasActivePayment
+      ? '\n\nThis order is awaiting payment -- pick "Submit a payment" from the main menu.'
       : '';
 
   await sendButtons(phone, {

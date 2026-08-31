@@ -29,6 +29,7 @@ import AdminCustomersPage from './pages/admin/AdminCustomersPage';
 import AdminCustomerDetailPage from './pages/admin/AdminCustomerDetailPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminStaffPage from './pages/admin/AdminStaffPage';
+import AdminActivityLogPage from './pages/admin/AdminActivityLogPage';
 import AdminReviewsPage from './pages/admin/AdminReviewsPage';
 
 const STAFF_ROLES = ['admin', 'sales_rep'];
@@ -108,6 +109,7 @@ export default function App() {
               }
             >
               <Route path="/admin/staff" element={<AdminStaffPage />} />
+              <Route path="/admin/activity-log" element={<AdminActivityLogPage />} />
             </Route>
 
             <Route

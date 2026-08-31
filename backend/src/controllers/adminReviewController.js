@@ -1,5 +1,6 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { listPendingReviews, resolveReview } = require('../services/adminReviewService');
+const { logActivity } = require('../services/activityLogService');
 
 // Admin/sales_rep only: the exception queue -- everything the automated
 // PayFast/stock-reservation path couldn't handle on its own (stock_short,
@@ -16,6 +17,15 @@ const resolve = asyncHandler(async (req, res) => {
 
   const result = await resolveReview(id, action, req.user.id);
   if (result.error) return res.status(result.status).json({ error: result.error });
+
+  await logActivity({
+    actorId: req.user.id,
+    actorLabel: req.user.company_name || req.user.email,
+    action: 'review.resolved',
+    entityType: 'admin_review',
+    entityId: id,
+    description: `${req.user.company_name || req.user.email} resolved a "${result.reason}" review on order #${result.orderNumber} with action "${action}".`,
+  });
 
   return res.json({ message: 'Review resolved', ...result });
 });

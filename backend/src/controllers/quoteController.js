@@ -4,6 +4,7 @@ const { createQuoteForCustomer, convertQuoteForCustomer } = require('../services
 const { flagIfNeeded, flagStockShort } = require('../services/adminReviewService');
 const { notifyInternalTeam } = require('../services/notificationService');
 const { formatCurrency } = require('../utils/formatCurrency');
+const { logActivity } = require('../services/activityLogService');
 
 const RESERVATION_MINUTES = Number(process.env.RESERVATION_EXPIRY_MINUTES) || 60;
 
@@ -129,6 +130,15 @@ const convertQuoteToOrder = asyncHandler(async (req, res) => {
   const result = await convertQuoteForCustomer(customerId, customerLabel, quoteId, isStaff ? 'admin' : 'portal');
   if (result.error) return res.status(result.status).json({ error: result.error });
 
+  await logActivity({
+    actorId: req.user.id,
+    actorLabel: req.user.company_name || req.user.email,
+    action: 'quote.converted',
+    entityType: 'order',
+    entityId: result.orderId,
+    description: `${customerLabel}'s quote #${result.quoteNumber} was converted to order #${result.orderId} via ${isStaff ? 'admin' : 'the customer portal'}.`,
+  });
+
   return res.status(201).json({ message: 'Order created successfully', ...result });
 });
 
@@ -176,6 +186,14 @@ const checkoutQuoteFast = asyncHandler(async (req, res) => {
       relatedType: 'order',
       relatedId: result.order_id,
     });
+    await logActivity({
+      actorId: req.user.id,
+      actorLabel: customerLabel,
+      action: 'quote.converted',
+      entityType: 'order',
+      entityId: result.order_id,
+      description: `${customerLabel} used fast checkout to create order #${order.order_number} (${formatCurrency(order.total_amount)}); stock reserved, awaiting PayFast payment.`,
+    });
   } else {
     await flagStockShort(result.order_id);
     await notifyInternalTeam({
@@ -184,6 +202,14 @@ const checkoutQuoteFast = asyncHandler(async (req, res) => {
       message: `${customerLabel}'s fast checkout for order #${order.order_number} hit insufficient stock and needs manual review.`,
       relatedType: 'order',
       relatedId: result.order_id,
+    });
+    await logActivity({
+      actorId: req.user.id,
+      actorLabel: customerLabel,
+      action: 'quote.converted',
+      entityType: 'order',
+      entityId: result.order_id,
+      description: `${customerLabel}'s fast checkout for order #${order.order_number} hit a stock shortfall and fell back to manual review.`,
     });
   }
 

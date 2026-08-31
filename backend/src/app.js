@@ -14,6 +14,7 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const whatsappRoutes = require('./routes/whatsappRoutes');
 const payfastRoutes = require('./routes/payfastRoutes');
 const adminReviewRoutes = require('./routes/adminReviewRoutes');
+const activityLogRoutes = require('./routes/activityLogRoutes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/admin/reviews', adminReviewRoutes);
+app.use('/api/activity-log', activityLogRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

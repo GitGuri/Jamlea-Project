@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const supabase = require('../config/supabase');
+const { sendText } = require('../config/whatsapp');
 
 let transporter = null;
 
@@ -28,8 +29,21 @@ async function sendEmail(to, subject, text) {
   }
 }
 
-// Creates an in-app notification for one user and, if an email is given, emails them too.
-async function notifyUser({ userId, type, title, message, relatedType, relatedId, email }) {
+// Creates an in-app notification for one user and, if given, emails and/or
+// WhatsApps them too -- whichever contact channels the caller has on hand.
+// Neither is awaited: a real SMTP send (Gmail included) takes several
+// seconds and a WhatsApp Graph API call is its own network round trip, and
+// every caller of notifyUser sits in the middle of a latency-sensitive
+// request -- a WhatsApp webhook reply, a PayFast ITN response, an admin
+// action's response. Blocking any of those on a side-channel message nobody
+// is synchronously waiting on made every one of them feel sluggish for no
+// benefit; both sendEmail and sendText already swallow their own errors, so
+// firing them and moving on is safe -- the process stays alive to finish
+// them since this is a long-running server, not a serverless function. The
+// one caller that doesn't stay alive on its own (the reservation-expiry
+// cron job) accounts for that itself rather than forcing every other caller
+// to wait around for a channel it may not have even been given.
+async function notifyUser({ userId, type, title, message, relatedType, relatedId, email, phone }) {
   const { error } = await supabase.from('notifications').insert([{
     user_id: userId,
     type,
@@ -40,10 +54,14 @@ async function notifyUser({ userId, type, title, message, relatedType, relatedId
   }]);
 
   if (error) console.error('Failed to create notification:', error.message);
-  if (email) await sendEmail(email, title, message);
+  if (email) sendEmail(email, title, message);
+  if (phone) sendText(phone, message);
 }
 
-// Notifies every admin/sales_rep, both in-app and by email.
+// Notifies every admin/sales_rep, both in-app and by email. Same
+// fire-and-forget reasoning as notifyUser above -- the in-app notification
+// insert is awaited (it's what other admins/sales_reps actually see), the
+// emails are not.
 async function notifyInternalTeam({ type, title, message, relatedType, relatedId }) {
   const { data: staff, error } = await supabase
     .from('users')
@@ -68,7 +86,7 @@ async function notifyInternalTeam({ type, title, message, relatedType, relatedId
   const { error: insertErr } = await supabase.from('notifications').insert(rows);
   if (insertErr) console.error('Failed to create internal notifications:', insertErr.message);
 
-  await Promise.all(staff.map((s) => sendEmail(s.email, title, message)));
+  staff.forEach((s) => sendEmail(s.email, title, message));
 }
 
 module.exports = { notifyUser, notifyInternalTeam, sendEmail };

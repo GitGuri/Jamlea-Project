@@ -65,7 +65,7 @@ async function listPendingReviews() {
 async function resolveReview(reviewId, action, reviewerId) {
   const { data: review, error: findErr } = await supabase
     .from('admin_reviews')
-    .select('id, order_id, reason, status')
+    .select('id, order_id, reason, status, orders(order_number)')
     .eq('id', reviewId)
     .single();
 
@@ -117,7 +117,7 @@ async function resolveReview(reviewId, action, reviewerId) {
     .eq('id', reviewId);
   if (resolveErr) throw resolveErr;
 
-  return { reviewId, action };
+  return { reviewId, action, reason: review.reason, orderId: review.order_id, orderNumber: review.orders?.order_number };
 }
 
 module.exports = { flagIfNeeded, flagStockShort, flagManualPayment, listPendingReviews, resolveReview };

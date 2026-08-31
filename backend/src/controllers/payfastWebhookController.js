@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { verifyItnSignature, revalidateWithPayfast } = require('../services/payfastService');
 const { transitionOrderStatus } = require('../services/orderStateService');
 const { notifyUser } = require('../services/notificationService');
+const { logActivity } = require('../services/activityLogService');
 
 // PayFast's ITN (Instant Transaction Notification) -- the only path that's
 // ever trusted to confirm a payment. The browser return_url redirect is
@@ -55,7 +56,7 @@ const receiveItn = asyncHandler(async (req, res) => {
 
   const { data: order, error: orderErr } = await supabase
     .from('orders')
-    .select('id, order_number, status, total_amount, customer_id, users(email)')
+    .select('id, order_number, status, total_amount, customer_id, users(email, phone)')
     .eq('id', orderId)
     .single();
   if (orderErr || !order) {
@@ -100,6 +101,14 @@ const receiveItn = asyncHandler(async (req, res) => {
         relatedType: 'order',
         relatedId: orderId,
         email: order.users?.email,
+        phone: order.users?.phone,
+      });
+      await logActivity({
+        actorLabel: 'PayFast (automated)',
+        action: 'order.status_changed',
+        entityType: 'order',
+        entityId: orderId,
+        description: `PayFast confirmed payment for order #${order.order_number}; status moved to "confirmed".`,
       });
     }
   }

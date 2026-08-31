@@ -4,6 +4,7 @@ const { notifyUser } = require('../services/notificationService');
 const { notifyIfLowStockCrossing } = require('./productController');
 const { transitionOrderStatus, ORDER_TRANSITIONS } = require('../services/orderStateService');
 const { buildCheckoutFields } = require('../services/payfastService');
+const { logActivity } = require('../services/activityLogService');
 
 // What a human can pick from the admin status dropdown. Deliberately
 // excludes 'stock_reserved' (only ever set by checkout_quote_with_reservation
@@ -85,7 +86,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
 
   const { data: order, error: findErr } = await supabase
     .from('orders')
-    .select('id, order_number, status, customer_id, users(email, company_name)')
+    .select('id, order_number, status, customer_id, users(email, company_name, phone)')
     .eq('id', id)
     .single();
 
@@ -146,6 +147,16 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     relatedType: 'order',
     relatedId: id,
     email: order.users?.email,
+    phone: order.users?.phone,
+  });
+
+  await logActivity({
+    actorId: req.user.id,
+    actorLabel: req.user.company_name || req.user.email,
+    action: 'order.status_changed',
+    entityType: 'order',
+    entityId: id,
+    description: `${req.user.company_name || req.user.email} changed order #${order.order_number} from "${order.status}" to "${status}".`,
   });
 
   return res.json({ message: 'Order status updated', orderId: id, status });

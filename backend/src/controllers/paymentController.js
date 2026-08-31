@@ -4,6 +4,7 @@ const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
 const { submitPaymentForCustomer, reviewPayment } = require('../services/paymentService');
 const { flagManualPayment } = require('../services/adminReviewService');
+const { logActivity } = require('../services/activityLogService');
 
 const PAYMENT_PROOFS_BUCKET = 'payment-proofs';
 
@@ -65,6 +66,15 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
 
   const result = await reviewPayment(id, status, req.user.id);
   if (result.error) return res.status(result.status).json({ error: result.error });
+
+  await logActivity({
+    actorId: req.user.id,
+    actorLabel: req.user.company_name || req.user.email,
+    action: 'payment.reviewed',
+    entityType: 'payment',
+    entityId: id,
+    description: `${req.user.company_name || req.user.email} ${status} ${result.customerLabel}'s payment for order #${result.orderNumber}.`,
+  });
 
   return res.json({ message: 'Payment status updated', ...result });
 });

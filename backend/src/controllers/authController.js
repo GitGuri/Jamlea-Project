@@ -2,6 +2,7 @@ const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
 const { notifyUser, notifyInternalTeam, sendEmail } = require('../services/notificationService');
 const { normalizePhone, findUserByPhone } = require('../services/whatsappConversationService');
+const { logActivity } = require('../services/activityLogService');
 
 // Public self-registration. Defaults to a 'customer' account (immediate
 // access, unchanged from before). Requesting 'sales_rep' instead lands the
@@ -302,6 +303,15 @@ const reviewStaffSignupAdmin = asyncHandler(async (req, res) => {
       'Your request for a staff account was not approved. Contact us if you have questions.'
     );
   }
+
+  await logActivity({
+    actorId: req.user.id,
+    actorLabel: req.user.company_name || req.user.email,
+    action: 'staff_signup.reviewed',
+    entityType: 'user',
+    entityId: id,
+    description: `${req.user.company_name || req.user.email} ${status} the staff signup request from ${target.full_name || target.email}.`,
+  });
 
   return res.json({ message: 'Signup request updated', id, status });
 });

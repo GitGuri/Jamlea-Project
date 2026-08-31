@@ -22,7 +22,10 @@ const STAFF_NAV_ITEMS = [
   { to: '/notifications', label: 'Notifications', icon: BellIcon },
 ];
 
-const ADMIN_ONLY_NAV_ITEM = { to: '/admin/staff', label: 'Staff', icon: StaffIcon };
+const ADMIN_ONLY_NAV_ITEMS = [
+  { to: '/admin/staff', label: 'Staff', icon: StaffIcon },
+  { to: '/admin/activity-log', label: 'Activity log', icon: LogIcon },
+];
 
 export default function Sidebar() {
   const { totalItems } = useCart();
@@ -30,7 +33,7 @@ export default function Sidebar() {
   const isStaff = user?.role === 'admin' || user?.role === 'sales_rep';
   const navItems = isStaff
     ? user.role === 'admin'
-      ? [...STAFF_NAV_ITEMS, ADMIN_ONLY_NAV_ITEM]
+      ? [...STAFF_NAV_ITEMS, ...ADMIN_ONLY_NAV_ITEMS]
       : STAFF_NAV_ITEMS
     : CUSTOMER_NAV_ITEMS;
 
@@ -157,6 +160,14 @@ function StaffIcon(props) {
       <circle cx="9" cy="8" r="3" />
       <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M16 8a3 3 0 110-6M21 20c0-2.8-2-5.1-4.6-5.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function LogIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M4 4h16v16H4z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8 9h8M8 13h8M8 17h5" strokeLinecap="round" />
     </svg>
   );
 }
