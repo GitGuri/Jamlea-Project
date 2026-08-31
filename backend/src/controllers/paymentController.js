@@ -1,7 +1,11 @@
+const crypto = require('crypto');
+const path = require('path');
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
-const { notifyUser } = require('../services/notificationService');
-const { submitPaymentForCustomer } = require('../services/paymentService');
+const { submitPaymentForCustomer, reviewPayment } = require('../services/paymentService');
+const { flagManualPayment } = require('../services/adminReviewService');
+
+const PAYMENT_PROOFS_BUCKET = 'payment-proofs';
 
 // Customer: submit a bank-transfer/EFT proof of payment against one of their
 // own approved orders. There's no payment gateway here -- staff manually
@@ -12,7 +16,7 @@ const { submitPaymentForCustomer } = require('../services/paymentService');
 // convertQuoteToOrder -- so the customer is resolved from the order itself
 // instead of assuming req.user is the customer.
 const createPayment = asyncHandler(async (req, res) => {
-  const { order_id, method, reference, amount, note } = req.body;
+  const { order_id, method, reference, amount, note, proof_url } = req.body;
   const isStaff = ['admin', 'sales_rep'].includes(req.user.role);
 
   let customerId = req.user.id;
@@ -33,7 +37,7 @@ const createPayment = asyncHandler(async (req, res) => {
   const result = await submitPaymentForCustomer(
     customerId,
     customerLabel,
-    { orderId: order_id, method, reference, amount, note },
+    { orderId: order_id, method, reference, amount, note, proofUrl: proof_url },
     isStaff ? 'admin' : 'portal'
   );
   if (result.error) return res.status(result.status).json({ error: result.error });
@@ -59,42 +63,61 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  if (!['approved', 'rejected'].includes(status)) {
-    return res.status(400).json({ error: "Status must be 'approved' or 'rejected'." });
-  }
+  const result = await reviewPayment(id, status, req.user.id);
+  if (result.error) return res.status(result.status).json({ error: result.error });
 
-  const { data: payment, error: findErr } = await supabase
-    .from('payments')
-    .select('id, status, customer_id, order_id, users!payments_customer_id_fkey(email)')
-    .eq('id', id)
-    .single();
-
-  if (findErr || !payment) return res.status(404).json({ error: 'Payment not found' });
-
-  if (payment.status !== 'submitted') {
-    return res.status(400).json({ error: `Payment is already "${payment.status}" and can't be reviewed again.` });
-  }
-
-  const { error } = await supabase
-    .from('payments')
-    .update({ status, reviewed_by: req.user.id, reviewed_at: new Date().toISOString() })
-    .eq('id', id);
-
-  if (error) throw error;
-
-  if (status === 'approved') {
-    await notifyUser({
-      userId: payment.customer_id,
-      type: 'general',
-      title: 'Payment approved',
-      message: `Your payment for order ${payment.order_id} has been approved. Thank you!`,
-      relatedType: 'payment',
-      relatedId: id,
-      email: payment.users?.email,
-    });
-  }
-
-  return res.json({ message: 'Payment status updated', paymentId: id, status });
+  return res.json({ message: 'Payment status updated', ...result });
 });
 
-module.exports = { createPayment, getAllPaymentsAdmin, updatePaymentStatus };
+// Same upload-then-reference pattern as uploadProductImage in
+// productController.js -- puts the file in its own bucket under a random
+// filename (never the original filename), hands back a public URL the
+// frontend includes as proof_url in the manual-payment submission below.
+const uploadPaymentProof = asyncHandler(async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file provided' });
+
+  const ext = path.extname(req.file.originalname) || '.jpg';
+  const filename = `${crypto.randomUUID()}${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(PAYMENT_PROOFS_BUCKET)
+    .upload(filename, req.file.buffer, { contentType: req.file.mimetype, upsert: false });
+
+  if (uploadError) return res.status(400).json({ error: uploadError.message });
+
+  const { data } = supabase.storage.from(PAYMENT_PROOFS_BUCKET).getPublicUrl(filename);
+  return res.status(201).json({ url: data.publicUrl });
+});
+
+// POST /api/orders/:orderId/manual-payment -- the PayFast ticket's explicit
+// fallback path: a customer whose order is stock_reserved (or, same as
+// today, approved) submits manual bank-transfer proof instead of paying via
+// PayFast. Reuses the exact same submitPaymentForCustomer pipeline the
+// existing POST /payments route already uses (createPayment above), plus
+// logs an admin_reviews row -- a manual payment always needs a human,
+// unlike a verified PayFast webhook.
+const submitManualPaymentForReview = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  const { method, reference, amount, note, proof_url } = req.body;
+  const customerLabel = req.user.company_name || req.user.email;
+
+  const result = await submitPaymentForCustomer(
+    req.user.id,
+    customerLabel,
+    { orderId, method, reference, amount, note, proofUrl: proof_url },
+    'portal'
+  );
+  if (result.error) return res.status(result.status).json({ error: result.error });
+
+  await flagManualPayment(orderId);
+
+  return res.status(201).json({ message: 'Payment submitted for review', ...result });
+});
+
+module.exports = {
+  createPayment,
+  getAllPaymentsAdmin,
+  updatePaymentStatus,
+  uploadPaymentProof,
+  submitManualPaymentForReview,
+};

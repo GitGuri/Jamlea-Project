@@ -109,8 +109,7 @@ export default function ProductImportModal({ onDone }) {
       <div className="space-y-4">
         <p className="text-sm text-slate-500">
           Upload a supplier receipt (photo, scan, or PDF) or a spreadsheet (.xlsx, .csv) of products you've
-          bought. Gemini will read it and suggest products to add or restock -- nothing is saved until you
-          review and confirm.
+          bought.
         </p>
         <input
           type="file"

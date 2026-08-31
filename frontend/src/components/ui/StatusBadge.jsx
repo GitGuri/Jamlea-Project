@@ -9,6 +9,10 @@ const STYLES = {
   processing: 'bg-teal-50 text-teal-600',
   completed: 'bg-good-50 text-good-500',
   cancelled: 'bg-bad-50 text-bad-500',
+  // fast-checkout order statuses (PayFast path)
+  stock_reserved: 'bg-amber-50 text-amber-600',
+  confirmed: 'bg-teal-50 text-teal-600',
+  ready_for_collection: 'bg-good-50 text-good-500',
   // payment statuses -- prefixed with payment_ at the call site so they
   // don't collide with the quote/order statuses above (e.g. a submitted
   // payment must not pick up quotes' "submitted" style/label).
@@ -26,6 +30,9 @@ const DOT_STYLES = {
   processing: 'bg-teal-500',
   completed: 'bg-good-500',
   cancelled: 'bg-bad-500',
+  stock_reserved: 'bg-amber-500',
+  confirmed: 'bg-teal-500',
+  ready_for_collection: 'bg-good-500',
   payment_submitted: 'bg-amber-500',
   payment_approved: 'bg-good-500',
   payment_rejected: 'bg-bad-500',

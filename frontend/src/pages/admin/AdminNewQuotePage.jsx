@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getAllCustomersAdmin } from '../../api/customers';
+import { getAllCustomersAdmin, createCustomerAdmin } from '../../api/customers';
 import { getProducts } from '../../api/products';
 import { createQuoteForCustomerAdmin } from '../../api/quotes';
 import { formatCurrency } from '../../utils/formatters';
@@ -19,6 +19,10 @@ export default function AdminNewQuotePage() {
   const [customerQuery, setCustomerQuery] = useState('');
   const [customerResults, setCustomerResults] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({ email: '', company_name: '', full_name: '', phone: '' });
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
+  const [customerError, setCustomerError] = useState('');
 
   const [productQuery, setProductQuery] = useState('');
   const [productResults, setProductResults] = useState([]);
@@ -48,6 +52,30 @@ export default function AdminNewQuotePage() {
     }, 300);
     return () => clearTimeout(timeout);
   }, [productQuery]);
+
+  const handleCreateCustomer = async () => {
+    setCustomerError('');
+    if (!newCustomer.email.trim()) {
+      setCustomerError('Email is required.');
+      return;
+    }
+    setCreatingCustomer(true);
+    try {
+      const { data } = await createCustomerAdmin({
+        email: newCustomer.email.trim(),
+        company_name: newCustomer.company_name.trim() || null,
+        full_name: newCustomer.full_name.trim() || null,
+        phone: newCustomer.phone.trim() || null,
+      });
+      setSelectedCustomer(data);
+      setShowNewCustomerForm(false);
+      setNewCustomer({ email: '', company_name: '', full_name: '', phone: '' });
+    } catch (err) {
+      setCustomerError(err.response?.data?.error || 'Could not create this customer.');
+    } finally {
+      setCreatingCustomer(false);
+    }
+  };
 
   const addItem = (product) => {
     setItems((prev) => {
@@ -112,6 +140,52 @@ export default function AdminNewQuotePage() {
               Change
             </button>
           </div>
+        ) : showNewCustomerForm ? (
+          <div className="mt-3 space-y-2">
+            <input
+              type="email"
+              value={newCustomer.email}
+              onChange={(e) => setNewCustomer((prev) => ({ ...prev, email: e.target.value }))}
+              placeholder="Email (required)"
+              className={SEARCH_INPUT_CLASS}
+            />
+            <input
+              type="text"
+              value={newCustomer.full_name}
+              onChange={(e) => setNewCustomer((prev) => ({ ...prev, full_name: e.target.value }))}
+              placeholder="Full name"
+              className={SEARCH_INPUT_CLASS}
+            />
+            <input
+              type="text"
+              value={newCustomer.company_name}
+              onChange={(e) => setNewCustomer((prev) => ({ ...prev, company_name: e.target.value }))}
+              placeholder="Company name"
+              className={SEARCH_INPUT_CLASS}
+            />
+            <input
+              type="text"
+              value={newCustomer.phone}
+              onChange={(e) => setNewCustomer((prev) => ({ ...prev, phone: e.target.value }))}
+              placeholder="Phone (optional)"
+              className={SEARCH_INPUT_CLASS}
+            />
+            {customerError && <p className="text-sm text-bad-500">{customerError}</p>}
+            <div className="flex items-center gap-3">
+              <Button onClick={handleCreateCustomer} loading={creatingCustomer}>
+                Create customer
+              </Button>
+              <button
+                onClick={() => {
+                  setShowNewCustomerForm(false);
+                  setCustomerError('');
+                }}
+                className="text-xs font-medium text-slate-500 transition-colors duration-150 hover:underline"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="mt-3">
             <input
@@ -138,6 +212,12 @@ export default function AdminNewQuotePage() {
                 ))}
               </div>
             )}
+            <button
+              onClick={() => setShowNewCustomerForm(true)}
+              className="mt-2 text-xs font-medium text-teal-600 transition-colors duration-150 hover:underline"
+            >
+              + New customer (no account yet)
+            </button>
           </div>
         )}
       </Card>

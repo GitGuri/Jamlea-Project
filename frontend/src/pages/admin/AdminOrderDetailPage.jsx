@@ -10,13 +10,20 @@ import Modal from '../../components/ui/Modal';
 import Card from '../../components/ui/Card';
 import PaymentForm from '../../components/PaymentForm';
 
-// Mirrors ORDER_TRANSITIONS in backend/src/controllers/orderController.js --
-// only 'approved' and 'cancelled' run through the stock-managing RPCs, so
-// the backend rejects any other jump (e.g. pending_approval -> completed).
+// Mirrors the merged transitions map in
+// backend/src/services/orderStateService.js -- 'approved' and 'cancelled'
+// (from pending_approval) run through the stock-managing RPCs, so the
+// backend rejects any other jump (e.g. pending_approval -> completed).
+// 'stock_reserved' and 'confirmed' are deliberately absent as *sources*
+// here -- those are the fast-checkout path's states, and confirmation only
+// ever comes from a verified PayFast webhook, never this dropdown; an order
+// sitting in either state shows no manual next-status option at all.
 const ORDER_TRANSITIONS = {
   pending_approval: ['approved', 'cancelled'],
   approved: ['processing', 'cancelled'],
   processing: ['completed', 'cancelled'],
+  confirmed: ['ready_for_collection', 'cancelled'],
+  ready_for_collection: [],
   completed: [],
   cancelled: [],
 };
@@ -72,7 +79,7 @@ export default function AdminOrderDetailPage() {
   const latestPayment = order.payments?.length
     ? [...order.payments].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
     : null;
-  const canSubmitPayment = order.status === 'approved' && !activePayment;
+  const canSubmitPayment = ['approved', 'stock_reserved'].includes(order.status) && !activePayment;
 
   return (
     <div>
@@ -133,7 +140,11 @@ export default function AdminOrderDetailPage() {
           {error && <p className="text-sm text-bad-500">{error}</p>}
           {canSubmitPayment && <Button onClick={() => setShowPaymentModal(true)}>Submit payment</Button>}
           {nextOptions.length === 0 ? (
-            <p className="text-sm text-slate-500">This order is in a final state.</p>
+            <p className="text-sm text-slate-500">
+              {order.status === 'stock_reserved'
+                ? 'Awaiting PayFast payment -- moves to "confirmed" automatically once paid.'
+                : 'This order is in a final state.'}
+            </p>
           ) : (
             <>
               <select

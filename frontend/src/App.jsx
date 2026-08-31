@@ -29,6 +29,7 @@ import AdminCustomersPage from './pages/admin/AdminCustomersPage';
 import AdminCustomerDetailPage from './pages/admin/AdminCustomerDetailPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminStaffPage from './pages/admin/AdminStaffPage';
+import AdminReviewsPage from './pages/admin/AdminReviewsPage';
 
 const STAFF_ROLES = ['admin', 'sales_rep'];
 
@@ -96,6 +97,7 @@ export default function App() {
               <Route path="/admin/customers" element={<AdminCustomersPage />} />
               <Route path="/admin/customers/:id" element={<AdminCustomerDetailPage />} />
               <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+              <Route path="/admin/reviews" element={<AdminReviewsPage />} />
             </Route>
 
             <Route

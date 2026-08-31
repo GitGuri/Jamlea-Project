@@ -16,6 +16,7 @@ const STAFF_NAV_ITEMS = [
   { to: '/admin/quotes', label: 'Quotes', icon: DocIcon },
   { to: '/admin/orders', label: 'Orders', icon: TruckIcon },
   { to: '/admin/payments', label: 'Payments', icon: CardIcon },
+  { to: '/admin/reviews', label: 'Review queue', icon: FlagIcon },
   { to: '/admin/customers', label: 'Customers', icon: PeopleIcon },
   { to: '/admin/analytics', label: 'Analytics', icon: ChartIcon },
   { to: '/notifications', label: 'Notifications', icon: BellIcon },
@@ -112,6 +113,14 @@ function BellIcon(props) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
       <path d="M6 8a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6z" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M10 21a2 2 0 004 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+function FlagIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" {...props}>
+      <path d="M5 21V4" strokeLinecap="round" />
+      <path d="M5 4h13l-3 4 3 4H5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

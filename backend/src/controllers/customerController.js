@@ -1,5 +1,7 @@
+const crypto = require('crypto');
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+const { normalizePhone, findUserByPhone } = require('../services/whatsappConversationService');
 
 // Orders in these statuses don't represent real revenue -- excluded from
 // total_spent the same way a "completed sales" figure would exclude them.
@@ -79,4 +81,61 @@ const getCustomerDetailAdmin = asyncHandler(async (req, res) => {
   return res.json({ ...customer, ...summarizeOrders(orders), orders, quotes });
 });
 
-module.exports = { getAllCustomersAdmin, getCustomerDetailAdmin };
+// Admin/sales_rep only: for building a quote/order on behalf of someone who
+// has never signed up themselves (e.g. a phone-in or walk-in customer).
+// public.users.id is a foreign key onto auth.users(id) (001_auth_user_sync.sql),
+// so a "customer" can't exist as a bare profile row -- this creates a real
+// Supabase Auth user (random password nobody's meant to know; they'd reset
+// it via "Forgot password?" if they ever want portal access themselves)
+// exactly like the public register() and WhatsApp new-account flows do,
+// then upserts the profile row rather than relying solely on the
+// handle_new_auth_user trigger, for the same trigger-timing reason those
+// two callers do.
+const createCustomerAdmin = asyncHandler(async (req, res) => {
+  const { email, company_name, full_name, phone } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required.' });
+
+  const { data: existingByEmail } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
+  if (existingByEmail) {
+    return res.status(400).json({ error: 'A customer with that email already exists.' });
+  }
+
+  const normalizedPhone = phone ? normalizePhone(phone) : null;
+  if (normalizedPhone) {
+    const existingByPhone = await findUserByPhone(normalizedPhone);
+    if (existingByPhone) {
+      return res.status(400).json({ error: 'A customer with that phone number already exists.' });
+    }
+  }
+
+  const randomPassword = crypto.randomBytes(24).toString('hex');
+  const { data: created, error } = await supabase.auth.admin.createUser({
+    email,
+    password: randomPassword,
+    email_confirm: true,
+    user_metadata: { company_name: company_name || null, full_name: full_name || null, role: 'customer' },
+  });
+  if (error) return res.status(400).json({ error: error.message });
+
+  const { data: profile, error: profileError } = await supabase
+    .from('users')
+    .upsert(
+      {
+        id: created.user.id,
+        email,
+        company_name: company_name || null,
+        full_name: full_name || null,
+        role: 'customer',
+        status: 'approved',
+        phone: normalizedPhone,
+      },
+      { onConflict: 'id' }
+    )
+    .select('id, email, company_name, full_name, phone')
+    .single();
+  if (profileError) throw profileError;
+
+  return res.status(201).json(profile);
+});
+
+module.exports = { getAllCustomersAdmin, getCustomerDetailAdmin, createCustomerAdmin };

@@ -9,6 +9,7 @@ const {
   getQuoteById,
   updateQuoteStatus,
   convertQuoteToOrder,
+  checkoutQuoteFast,
 } = require('../controllers/quoteController');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const validate = require('../middleware/validate');
@@ -45,5 +46,6 @@ router.patch(
   updateQuoteStatus
 );
 router.post('/:quoteId/convert', authenticateToken, convertQuoteToOrder);
+router.post('/:quoteId/checkout', authenticateToken, checkoutQuoteFast);
 
 module.exports = router;

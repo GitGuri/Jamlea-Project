@@ -1,6 +1,11 @@
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
 const { createQuoteForCustomer, convertQuoteForCustomer } = require('../services/quoteService');
+const { flagIfNeeded, flagStockShort } = require('../services/adminReviewService');
+const { notifyInternalTeam } = require('../services/notificationService');
+const { formatCurrency } = require('../utils/formatCurrency');
+
+const RESERVATION_MINUTES = Number(process.env.RESERVATION_EXPIRY_MINUTES) || 60;
 
 const createQuote = asyncHandler(async (req, res) => {
   const { items } = req.body;
@@ -127,6 +132,71 @@ const convertQuoteToOrder = asyncHandler(async (req, res) => {
   return res.status(201).json({ message: 'Order created successfully', ...result });
 });
 
+// Customer only -- the fast, automated checkout path, sitting alongside
+// (not replacing) convertQuoteToOrder above. Runs the atomic stock
+// check+reservation transaction (checkout_quote_with_reservation, see
+// 014_payfast_checkout_and_review_queue.sql). If every line has enough
+// stock, the order is created straight into 'stock_reserved' with the stock
+// already decremented and a reservation on the clock; if any line is short,
+// the order still gets created, but into the *existing* 'pending_approval'
+// state instead -- it falls back into the same manual admin queue that
+// already handles that state today, just with an admin_reviews row
+// (reason='stock_short') explaining why it's there. This endpoint only
+// creates the order -- it never initiates a PayFast payment itself; the
+// customer does that as a separate step from the order page.
+const checkoutQuoteFast = asyncHandler(async (req, res) => {
+  const { quoteId } = req.params;
+
+  const { data: rows, error } = await supabase.rpc('checkout_quote_with_reservation', {
+    p_quote_id: quoteId,
+    p_customer_id: req.user.id,
+    p_reservation_minutes: RESERVATION_MINUTES,
+  });
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  const result = rows?.[0];
+  if (!result) return res.status(500).json({ error: 'Checkout did not return a result.' });
+
+  const { data: order, error: orderErr } = await supabase
+    .from('orders')
+    .select('order_number, total_amount')
+    .eq('id', result.order_id)
+    .single();
+  if (orderErr || !order) throw orderErr || new Error('Order not found after checkout');
+
+  const customerLabel = req.user.company_name || req.user.email;
+
+  if (result.order_status === 'stock_reserved') {
+    await flagIfNeeded(result.order_id, req.user.id, order.total_amount);
+    await notifyInternalTeam({
+      type: 'general',
+      title: 'Fast checkout -- stock reserved',
+      message: `${customerLabel} reserved stock for order #${order.order_number} (${formatCurrency(order.total_amount)}) and can now pay via PayFast.`,
+      relatedType: 'order',
+      relatedId: result.order_id,
+    });
+  } else {
+    await flagStockShort(result.order_id);
+    await notifyInternalTeam({
+      type: 'general',
+      title: 'Fast checkout -- stock shortfall',
+      message: `${customerLabel}'s fast checkout for order #${order.order_number} hit insufficient stock and needs manual review.`,
+      relatedType: 'order',
+      relatedId: result.order_id,
+    });
+  }
+
+  return res.status(201).json({
+    orderId: result.order_id,
+    orderNumber: order.order_number,
+    status: result.order_status,
+    shortProductId: result.short_product_id,
+    shortRequested: result.short_requested,
+    shortAvailable: result.short_available,
+  });
+});
+
 module.exports = {
   createQuote,
   createQuoteForCustomerAdmin,
@@ -135,4 +205,5 @@ module.exports = {
   getQuoteById,
   updateQuoteStatus,
   convertQuoteToOrder,
+  checkoutQuoteFast,
 };

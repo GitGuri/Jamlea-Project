@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getOrderById } from '../api/orders';
+import { getOrderById, getOrderStatus, initiatePayfastPayment, submitManualPaymentForReview } from '../api/orders';
 import { createPayment } from '../api/payments';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import StatusBadge from '../components/ui/StatusBadge';
@@ -9,12 +9,38 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
 import PaymentForm from '../components/PaymentForm';
+import PayfastRedirectForm from '../components/PayfastRedirectForm';
+
+const POLL_MS = 5000;
+
+function ReservationCountdown({ expiresAt }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const msLeft = new Date(expiresAt).getTime() - now;
+  if (msLeft <= 0) return <p className="text-sm text-bad-500">Reservation expired -- refreshing...</p>;
+
+  const minutes = Math.floor(msLeft / 60000);
+  const seconds = Math.floor((msLeft % 60000) / 1000);
+  return (
+    <p className="text-sm text-amber-600">
+      Stock reserved -- pay within {minutes}:{String(seconds).padStart(2, '0')} or it releases automatically.
+    </p>
+  );
+}
 
 export default function OrderDetailPage() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [payfastCheckout, setPayfastCheckout] = useState(null);
+  const [redirecting, setRedirecting] = useState(false);
+  const lastStatus = useRef(null);
 
   const load = () => getOrderById(id).then(({ data }) => setOrder(data));
 
@@ -22,6 +48,27 @@ export default function OrderDetailPage() {
     load().finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Only worth polling while something's actually still moving -- once the
+  // order settles (confirmed, cancelled, ready, etc.) there's nothing left
+  // to catch. GET /orders/:orderId/status is the lean lookup this polls;
+  // a full load() only re-runs when the status has actually changed, to
+  // pick up the resulting payment/reservation rows.
+  useEffect(() => {
+    if (!order || order.status !== 'stock_reserved') return undefined;
+    lastStatus.current = order.status;
+
+    const interval = setInterval(async () => {
+      const { data } = await getOrderStatus(id);
+      if (data.status !== lastStatus.current) {
+        lastStatus.current = data.status;
+        await load();
+      }
+    }, POLL_MS);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, order?.status]);
 
   if (loading) return <Spinner />;
   if (!order) return <p className="text-sm text-slate-500">Order not found.</p>;
@@ -32,13 +79,33 @@ export default function OrderDetailPage() {
   const latestPayment = order.payments?.length
     ? [...order.payments].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
     : null;
-  const canSubmitPayment = order.status === 'approved' && !activePayment;
+  const isStockReserved = order.status === 'stock_reserved';
+  const canSubmitPayment = (order.status === 'approved' || isStockReserved) && !activePayment;
+  const reservation = order.stock_reservations?.[0];
 
   const handleSubmitPayment = async (payload) => {
-    await createPayment({ order_id: order.id, ...payload });
+    if (isStockReserved) {
+      await submitManualPaymentForReview(order.id, payload);
+    } else {
+      await createPayment({ order_id: order.id, ...payload });
+    }
     setShowPaymentModal(false);
     await load();
   };
+
+  const handlePayfastRetry = async () => {
+    setRedirecting(true);
+    try {
+      const { data } = await initiatePayfastPayment(order.id);
+      setPayfastCheckout(data);
+    } finally {
+      setRedirecting(false);
+    }
+  };
+
+  if (payfastCheckout) {
+    return <PayfastRedirectForm action={payfastCheckout.action} fields={payfastCheckout.fields} />;
+  }
 
   return (
     <div>
@@ -84,6 +151,12 @@ export default function OrderDetailPage() {
         </table>
       </Card>
 
+      {isStockReserved && !activePayment && reservation && (
+        <Card className="mt-6 p-4">
+          <ReservationCountdown expiresAt={reservation.expires_at} />
+        </Card>
+      )}
+
       <Card className="mt-6 flex items-center justify-between p-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
@@ -94,7 +167,17 @@ export default function OrderDetailPage() {
             <StatusBadge status="payment_rejected" />
           )}
           {activePayment && <StatusBadge status={`payment_${activePayment.status}`} />}
-          {canSubmitPayment && (
+          {canSubmitPayment && isStockReserved && (
+            <Button variant="secondary" onClick={() => setShowPaymentModal(true)}>
+              Pay via bank transfer instead
+            </Button>
+          )}
+          {canSubmitPayment && isStockReserved && (
+            <Button onClick={handlePayfastRetry} loading={redirecting}>
+              Pay with PayFast
+            </Button>
+          )}
+          {canSubmitPayment && !isStockReserved && (
             <Button onClick={() => setShowPaymentModal(true)}>Submit payment</Button>
           )}
         </div>

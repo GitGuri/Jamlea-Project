@@ -2,20 +2,17 @@ const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
 const { notifyUser } = require('../services/notificationService');
 const { notifyIfLowStockCrossing } = require('./productController');
+const { transitionOrderStatus, ORDER_TRANSITIONS } = require('../services/orderStateService');
+const { buildCheckoutFields } = require('../services/payfastService');
 
-const ORDER_STATUSES = ['pending_approval', 'approved', 'processing', 'completed', 'cancelled'];
-
-// Only 'approved' and 'cancelled' route through the stock-managing RPCs
-// (approve_order decrements stock, cancel_order restocks). Without this map,
-// staff could jump an order straight from pending_approval to completed and
-// the order would be marked fulfilled without stock ever being decremented.
-const ORDER_TRANSITIONS = {
-  pending_approval: ['approved', 'cancelled'],
-  approved: ['processing', 'cancelled'],
-  processing: ['completed', 'cancelled'],
-  completed: [],
-  cancelled: [],
-};
+// What a human can pick from the admin status dropdown. Deliberately
+// excludes 'stock_reserved' (only ever set by checkout_quote_with_reservation
+// at order creation) and 'confirmed' (only ever set by the verified PayFast
+// webhook in payfastWebhookController.js -- an admin clicking a dropdown is
+// exactly the kind of untrusted client-side trigger that state is supposed
+// to never come from). 'ready_for_collection' stays reachable here since
+// marking fulfillment ready is a legitimate manual staff action.
+const ORDER_STATUSES = ['pending_approval', 'approved', 'processing', 'completed', 'cancelled', 'ready_for_collection'];
 
 const STATUS_NOTIFICATIONS = {
   approved: (orderNumber) => ({
@@ -33,6 +30,10 @@ const STATUS_NOTIFICATIONS = {
   completed: (orderNumber) => ({
     title: 'Order completed',
     message: `Your order #${orderNumber} has been completed.`,
+  }),
+  ready_for_collection: (orderNumber) => ({
+    title: 'Order ready for collection',
+    message: `Your order #${orderNumber} is ready for collection.`,
   }),
 };
 
@@ -60,7 +61,7 @@ const getAllOrdersAdmin = asyncHandler(async (req, res) => {
 const getOrderById = asyncHandler(async (req, res) => {
   let query = supabase
     .from('orders')
-    .select('*, order_items(*, products(name, sku)), users(email, company_name), payments(*)')
+    .select('*, order_items(*, products(name, sku)), users(email, company_name), payments(*), stock_reservations(expires_at)')
     .eq('id', req.params.id);
 
   if (!['admin', 'sales_rep'].includes(req.user.role)) {
@@ -124,8 +125,12 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     const { error } = await supabase.rpc('cancel_order', { p_order_id: id });
     if (error) return res.status(400).json({ error: error.message });
   } else {
-    const { error } = await supabase.from('orders').update({ status }).eq('id', id);
-    if (error) throw error;
+    // e.g. 'processing', 'completed', 'ready_for_collection' -- plain status
+    // moves with no stock side effect, routed through the single
+    // transitionOrderStatus() function (orderStateService.js) that every
+    // other orders.status write in the app now goes through too.
+    const result = await transitionOrderStatus(id, status);
+    if (result.error) return res.status(result.status).json({ error: result.error });
   }
 
   const { title, message } = STATUS_NOTIFICATIONS[status]?.(order.order_number) || {
@@ -146,4 +151,52 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   return res.json({ message: 'Order status updated', orderId: id, status });
 });
 
-module.exports = { getCustomerOrders, getAllOrdersAdmin, getOrderById, updateOrderStatus };
+// Customer only. Order must be theirs and already 'stock_reserved' (set by
+// checkout_quote_with_reservation) -- there's no PayFast payment possible
+// for an order still sitting in the manual pending_approval queue.
+const initiatePayfastPayment = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('id, order_number, status, total_amount, customer_id, users(email, company_name)')
+    .eq('id', id)
+    .eq('customer_id', req.user.id)
+    .single();
+
+  if (error || !order) return res.status(404).json({ error: 'Order not found' });
+  if (order.status !== 'stock_reserved') {
+    return res.status(400).json({ error: 'This order is not awaiting PayFast payment.' });
+  }
+
+  const checkout = buildCheckoutFields(order, order.users || {});
+
+  return res.json(checkout);
+});
+
+// Lean, poll-friendly status lookup -- same ownership scoping as
+// getOrderById (staff see any order, customers only their own) but without
+// the full item/payment payload.
+const getOrderStatus = asyncHandler(async (req, res) => {
+  let query = supabase
+    .from('orders')
+    .select('id, order_number, status, total_amount, updated_at, stock_reservations(expires_at), payments(status, gateway, gateway_status)')
+    .eq('id', req.params.orderId);
+
+  if (!['admin', 'sales_rep'].includes(req.user.role)) {
+    query = query.eq('customer_id', req.user.id);
+  }
+
+  const { data, error } = await query.single();
+  if (error || !data) return res.status(404).json({ error: 'Order not found' });
+  return res.json(data);
+});
+
+module.exports = {
+  getCustomerOrders,
+  getAllOrdersAdmin,
+  getOrderById,
+  updateOrderStatus,
+  initiatePayfastPayment,
+  getOrderStatus,
+};

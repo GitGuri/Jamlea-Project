@@ -1,5 +1,5 @@
 const supabase = require('../config/supabase');
-const { notifyInternalTeam } = require('./notificationService');
+const { notifyInternalTeam, notifyUser } = require('./notificationService');
 const { formatCurrency } = require('../utils/formatCurrency');
 
 // Core logic behind submitting a payment, shared by the portal's POST
@@ -7,7 +7,21 @@ const { formatCurrency } = require('../utils/formatCurrency');
 // onto the same pipeline, not two implementations of it. `source` records
 // which one was used (defaults to 'portal' so nothing changes for existing
 // callers).
-async function submitPaymentForCustomer(customerId, customerLabel, { orderId, method, reference, amount, note }, source = 'portal') {
+// Orders reach a payable state two ways: the existing manual flow
+// (pending_approval -> approved, via approve_order) and the newer
+// fast-checkout path (straight into stock_reserved, via
+// checkout_quote_with_reservation) -- the manual bank-transfer fallback
+// described in the PayFast ticket is submitted against a stock_reserved
+// order the same way an existing approved order takes a manual payment
+// today, so both statuses are accepted here.
+const PAYABLE_STATUSES = ['approved', 'stock_reserved'];
+
+async function submitPaymentForCustomer(
+  customerId,
+  customerLabel,
+  { orderId, method, reference, amount, note, proofUrl },
+  source = 'portal'
+) {
   const { data: order, error: orderErr } = await supabase
     .from('orders')
     .select('id, order_number, status')
@@ -16,8 +30,8 @@ async function submitPaymentForCustomer(customerId, customerLabel, { orderId, me
     .single();
 
   if (orderErr || !order) return { error: 'Order not found', status: 404 };
-  if (order.status !== 'approved') {
-    return { error: 'Payment can only be submitted for an approved order.', status: 400 };
+  if (!PAYABLE_STATUSES.includes(order.status)) {
+    return { error: 'Payment can only be submitted for an approved or stock-reserved order.', status: 400 };
   }
 
   const { data: existing, error: existingErr } = await supabase
@@ -33,7 +47,18 @@ async function submitPaymentForCustomer(customerId, customerLabel, { orderId, me
 
   const { data: payment, error } = await supabase
     .from('payments')
-    .insert([{ order_id: orderId, customer_id: customerId, method, reference, amount, note: note || null, source }])
+    .insert([
+      {
+        order_id: orderId,
+        customer_id: customerId,
+        method,
+        reference,
+        amount,
+        note: note || null,
+        proof_url: proofUrl || null,
+        source,
+      },
+    ])
     .select()
     .single();
 
@@ -50,4 +75,47 @@ async function submitPaymentForCustomer(customerId, customerLabel, { orderId, me
   return { paymentId: payment.id, orderNumber: order.order_number };
 }
 
-module.exports = { submitPaymentForCustomer };
+// Core logic behind approving/rejecting a manual bank-transfer payment,
+// shared by the existing admin Payments page (paymentController.js's
+// updatePaymentStatus) and the new admin_reviews queue
+// (adminReviewService.js resolving a 'manual_payment' review) -- same two-
+// front-doors-one-pipeline shape as everything else in this file.
+async function reviewPayment(paymentId, status, reviewerId) {
+  if (!['approved', 'rejected'].includes(status)) {
+    return { error: "Status must be 'approved' or 'rejected'.", status: 400 };
+  }
+
+  const { data: payment, error: findErr } = await supabase
+    .from('payments')
+    .select('id, status, customer_id, order_id, users!payments_customer_id_fkey(email)')
+    .eq('id', paymentId)
+    .single();
+
+  if (findErr || !payment) return { error: 'Payment not found', status: 404 };
+  if (payment.status !== 'submitted') {
+    return { error: `Payment is already "${payment.status}" and can't be reviewed again.`, status: 400 };
+  }
+
+  const { error } = await supabase
+    .from('payments')
+    .update({ status, reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
+    .eq('id', paymentId);
+
+  if (error) throw error;
+
+  if (status === 'approved') {
+    await notifyUser({
+      userId: payment.customer_id,
+      type: 'general',
+      title: 'Payment approved',
+      message: `Your payment for order ${payment.order_id} has been approved. Thank you!`,
+      relatedType: 'payment',
+      relatedId: paymentId,
+      email: payment.users?.email,
+    });
+  }
+
+  return { paymentId, status };
+}
+
+module.exports = { submitPaymentForCustomer, reviewPayment };
