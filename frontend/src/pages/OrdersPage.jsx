@@ -51,7 +51,7 @@ export default function OrdersPage() {
                   className="cursor-pointer transition-colors duration-150 hover:bg-slate-50"
                   onClick={() => navigate(`/orders/${order.id}`)}
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-teal-600">#{order.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-teal-600">#{order.order_number}</td>
                   <td className="px-4 py-3 text-slate-600">{order.order_items?.length || 0} items</td>
                   <td className="px-4 py-3 font-mono font-medium text-ink">{formatCurrency(order.total_amount)}</td>
                   <td className="px-4 py-3"><StatusBadge status={order.status} /></td>

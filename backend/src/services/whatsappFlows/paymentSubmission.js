@@ -2,7 +2,6 @@ const supabase = require('../../config/supabase');
 const { sendList, sendText, sendButtons } = require('../../config/whatsapp');
 const { formatCurrency } = require('../../utils/formatCurrency');
 const { submitPaymentForCustomer } = require('../paymentService');
-const { flagManualPayment } = require('../adminReviewService');
 
 const METHOD_BUTTONS = [
   { id: 'payment_method_bank_transfer', title: 'Bank transfer/EFT' },
@@ -123,16 +122,9 @@ async function handleConfirmSubmit(conversation, context) {
     return { newState: 'main_menu', newContext: {} };
   }
 
-  // Same rule OrderDetailPage.jsx follows: a manual payment against a
-  // stock_reserved order (the customer choosing bank transfer instead of
-  // PayFast) needs its own admin_reviews row so it surfaces in the Review
-  // Queue, not just the Payments page -- a stock_reserved order otherwise
-  // has no admin-facing "this is now waiting on you" signal the way a plain
-  // 'approved' order's Payments-page entry already provides.
-  if (context.orderStatus === 'stock_reserved') {
-    await flagManualPayment(context.orderId);
-  }
-
+  // submitPaymentForCustomer (paymentService.js) already logs an
+  // admin_reviews row itself when the order was stock_reserved -- no need
+  // to duplicate that decision here.
   await sendText(
     phone,
     `✅ Payment submitted for order #${result.orderNumber}! Our team will review it against our bank statement and confirm shortly.`
@@ -173,7 +165,7 @@ async function handle(conversation, message) {
     });
     return {
       newState: 'payment_awaiting_method',
-      newContext: { orderId: order.id, orderNumber: order.order_number, orderStatus: order.status },
+      newContext: { orderId: order.id, orderNumber: order.order_number },
     };
   }
 

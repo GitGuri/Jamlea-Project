@@ -72,6 +72,24 @@ async function submitPaymentForCustomer(
     relatedId: payment.id,
   });
 
+  // A manual payment against a stock_reserved order (the customer/staff
+  // choosing bank transfer instead of PayFast) needs its own admin_reviews
+  // row so it surfaces in the Review Queue, not just the Payments page --
+  // a stock_reserved order otherwise has no "this needs you" signal the way
+  // an 'approved' order's Payments-page entry already provides. Decided
+  // once, here, rather than in each of the three callers of this function
+  // (portal, admin-on-behalf, WhatsApp) -- they'd previously drifted, with
+  // one of the three silently never flagging.
+  //
+  // Required lazily, not at module top-level: adminReviewService.js already
+  // requires this module (for reviewPayment), so a top-level require here
+  // would form a circular require whose result depends on load order --
+  // same reasoning as the lazy requires in whatsappFlows/mainMenu.js.
+  if (order.status === 'stock_reserved') {
+    const { flagManualPayment } = require('./adminReviewService');
+    await flagManualPayment(orderId);
+  }
+
   return { paymentId: payment.id, orderNumber: order.order_number };
 }
 

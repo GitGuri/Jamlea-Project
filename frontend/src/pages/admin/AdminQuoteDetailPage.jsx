@@ -5,6 +5,7 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Card from '../../components/ui/Card';
 
 export default function AdminQuoteDetailPage() {
@@ -15,6 +16,7 @@ export default function AdminQuoteDetailPage() {
   const [updating, setUpdating] = useState(false);
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState('');
+  const [showVoidConfirm, setShowVoidConfirm] = useState(false);
 
   const load = () => getQuoteById(quoteId).then(({ data }) => setQuote(data));
 
@@ -23,7 +25,7 @@ export default function AdminQuoteDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteId]);
 
-  const handleExpire = async () => {
+  const handleVoid = async () => {
     setError('');
     setUpdating(true);
     try {
@@ -33,6 +35,7 @@ export default function AdminQuoteDetailPage() {
       setError(err.response?.data?.error || 'Could not update this quote.');
     } finally {
       setUpdating(false);
+      setShowVoidConfirm(false);
     }
   };
 
@@ -66,7 +69,14 @@ export default function AdminQuoteDetailPage() {
             Quote <span className="font-mono text-base text-slate-400">#{quote.quote_number}</span>
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {quote.users?.company_name || quote.users?.email} · Submitted {formatDate(quote.created_at)}
+            {quote.customer_id ? (
+              <Link to={`/admin/customers/${quote.customer_id}`} className="text-teal-600 hover:underline">
+                {quote.users?.company_name || quote.users?.email}
+              </Link>
+            ) : (
+              quote.users?.company_name || quote.users?.email
+            )}{' '}
+            · Submitted {formatDate(quote.created_at)}
           </p>
         </div>
         <StatusBadge status={quote.status} />
@@ -108,8 +118,8 @@ export default function AdminQuoteDetailPage() {
         <div className="flex items-center gap-3">
           {error && <p className="text-sm text-bad-500">{error}</p>}
           {canExpire && (
-            <Button variant="danger" onClick={handleExpire} loading={updating}>
-              Mark expired
+            <Button variant="danger" onClick={() => setShowVoidConfirm(true)} loading={updating}>
+              Void quote
             </Button>
           )}
           {canConvert && (
@@ -119,6 +129,17 @@ export default function AdminQuoteDetailPage() {
           )}
         </div>
       </Card>
+
+      {showVoidConfirm && (
+        <ConfirmDialog
+          title="Void this quote?"
+          message={`Quote #${quote.quote_number} will be marked expired and can no longer be converted to an order. This can't be undone.`}
+          confirmLabel="Void quote"
+          onConfirm={handleVoid}
+          onCancel={() => setShowVoidConfirm(false)}
+          loading={updating}
+        />
+      )}
     </div>
   );
 }

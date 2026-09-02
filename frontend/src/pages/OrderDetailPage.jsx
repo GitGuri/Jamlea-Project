@@ -116,7 +116,7 @@ export default function OrderDetailPage() {
       <div className="mt-3 flex items-center justify-between">
         <div>
           <h1 className="font-display text-xl font-semibold text-ink">
-            Order <span className="font-mono text-base text-slate-400">#{order.id.slice(0, 8)}</span>
+            Order <span className="font-mono text-base text-slate-400">#{order.order_number}</span>
           </h1>
           <p className="mt-1 text-sm text-slate-500">Placed {formatDate(order.created_at)}</p>
         </div>
@@ -154,6 +154,14 @@ export default function OrderDetailPage() {
       {isStockReserved && !activePayment && reservation && (
         <Card className="mt-6 p-4">
           <ReservationCountdown expiresAt={reservation.expires_at} />
+        </Card>
+      )}
+
+      {order.status === 'pending_approval' && (
+        <Card className="mt-6 p-4">
+          <p className="text-sm text-amber-600">
+            Your order is awaiting staff approval -- you'll get a notification once it's ready for payment.
+          </p>
         </Card>
       )}
 

@@ -5,6 +5,7 @@ const { flagIfNeeded, flagStockShort } = require('../services/adminReviewService
 const { notifyInternalTeam } = require('../services/notificationService');
 const { formatCurrency } = require('../utils/formatCurrency');
 const { logActivity } = require('../services/activityLogService');
+const { friendlyRpcErrorMessage } = require('../utils/rpcErrorMessage');
 
 const RESERVATION_MINUTES = Number(process.env.RESERVATION_EXPIRY_MINUTES) || 60;
 
@@ -163,7 +164,7 @@ const checkoutQuoteFast = asyncHandler(async (req, res) => {
     p_reservation_minutes: RESERVATION_MINUTES,
   });
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return res.status(400).json({ error: friendlyRpcErrorMessage(error.message) });
 
   const result = rows?.[0];
   if (!result) return res.status(500).json({ error: 'Checkout did not return a result.' });

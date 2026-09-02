@@ -3,7 +3,6 @@ const path = require('path');
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
 const { submitPaymentForCustomer, reviewPayment } = require('../services/paymentService');
-const { flagManualPayment } = require('../services/adminReviewService');
 const { logActivity } = require('../services/activityLogService');
 
 const PAYMENT_PROOFS_BUCKET = 'payment-proofs';
@@ -50,7 +49,7 @@ const createPayment = asyncHandler(async (req, res) => {
 const getAllPaymentsAdmin = asyncHandler(async (req, res) => {
   const { data, error } = await supabase
     .from('payments')
-    .select('*, orders(id, total_amount), users!payments_customer_id_fkey(email, company_name)')
+    .select('*, orders(id, order_number, total_amount), users!payments_customer_id_fkey(email, company_name)')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -103,9 +102,11 @@ const uploadPaymentProof = asyncHandler(async (req, res) => {
 // fallback path: a customer whose order is stock_reserved (or, same as
 // today, approved) submits manual bank-transfer proof instead of paying via
 // PayFast. Reuses the exact same submitPaymentForCustomer pipeline the
-// existing POST /payments route already uses (createPayment above), plus
-// logs an admin_reviews row -- a manual payment always needs a human,
-// unlike a verified PayFast webhook.
+// existing POST /payments route already uses (createPayment above) --
+// submitPaymentForCustomer itself decides whether to log an admin_reviews
+// row (only for a stock_reserved order, since that's the "chose bank
+// transfer instead of PayFast" case a verified webhook can't cover), so
+// this endpoint and createPayment get identical, correct behavior for free.
 const submitManualPaymentForReview = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
   const { method, reference, amount, note, proof_url } = req.body;
@@ -118,8 +119,6 @@ const submitManualPaymentForReview = asyncHandler(async (req, res) => {
     'portal'
   );
   if (result.error) return res.status(result.status).json({ error: result.error });
-
-  await flagManualPayment(orderId);
 
   return res.status(201).json({ message: 'Payment submitted for review', ...result });
 });

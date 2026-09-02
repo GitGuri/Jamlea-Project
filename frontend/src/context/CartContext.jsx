@@ -1,12 +1,39 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 const CartContext = createContext(null);
+const STORAGE_KEY = 'jamlea_cart_items';
 
-// The "cart" is a draft quote living in memory: an array of
+// Read once at mount, not on every render -- a plain function passed to
+// useState's lazy-initializer form. Wrapped in try/catch since localStorage
+// can throw (private browsing, storage disabled) and a corrupted/foreign
+// value stored under this key shouldn't crash the app, just start empty.
+function loadStoredItems() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+// The "cart" is a draft quote -- an array of
 // { product_id, name, sku, unit_price, quantity }. It only becomes a real
-// quote once the customer submits it via POST /quotes.
+// quote once the customer submits it via POST /quotes. Persisted to
+// localStorage (this browser only, never sent anywhere) so a refresh, a
+// closed tab, or a session timeout doesn't silently wipe an in-progress
+// quote the customer was still building.
 export function CartProvider({ children }) {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(loadStoredItems);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch {
+      // Storage full/disabled -- the cart still works for this session,
+      // it just won't survive a refresh. Not worth surfacing to the user.
+    }
+  }, [items]);
 
   const addItem = (product, quantity = 1) => {
     setItems((prev) => {

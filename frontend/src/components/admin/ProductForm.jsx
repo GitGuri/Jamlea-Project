@@ -18,6 +18,7 @@ const EMPTY = {
   supplier_location: '',
   supplier_email: '',
   supplier_phone: '',
+  supplier_cost: '',
 };
 
 const FIELD_CLASS =
@@ -41,6 +42,7 @@ export default function ProductForm({ initialProduct, onSubmit, onCancel }) {
           supplier_location: initialProduct.supplier_location || '',
           supplier_email: initialProduct.supplier_email || '',
           supplier_phone: initialProduct.supplier_phone || '',
+          supplier_cost: initialProduct.supplier_cost ?? '',
         }
       : EMPTY
   );
@@ -96,6 +98,7 @@ export default function ProductForm({ initialProduct, onSubmit, onCancel }) {
         supplier_location: form.supplier_location,
         supplier_email: form.supplier_email || null,
         supplier_phone: form.supplier_phone,
+        supplier_cost: form.supplier_cost === '' ? null : Number(form.supplier_cost),
       });
     } catch (err) {
       setError(err.response?.data?.error || 'Could not save this product.');
@@ -212,6 +215,18 @@ export default function ProductForm({ initialProduct, onSubmit, onCancel }) {
               value={form.supplier_email}
               onChange={update('supplier_email')}
               className={FIELD_CLASS}
+            />
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>Cost price (optional)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.supplier_cost}
+              onChange={update('supplier_cost')}
+              className={FIELD_CLASS}
+              placeholder="What we pay the supplier"
             />
           </div>
         </div>

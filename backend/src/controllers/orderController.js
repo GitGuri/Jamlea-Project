@@ -5,6 +5,7 @@ const { notifyIfLowStockCrossing } = require('./productController');
 const { transitionOrderStatus, ORDER_TRANSITIONS } = require('../services/orderStateService');
 const { buildCheckoutFields } = require('../services/payfastService');
 const { logActivity } = require('../services/activityLogService');
+const { friendlyRpcErrorMessage } = require('../utils/rpcErrorMessage');
 
 // What a human can pick from the admin status dropdown. Deliberately
 // excludes 'stock_reserved' (only ever set by checkout_quote_with_reservation
@@ -113,7 +114,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     const previousStockById = new Map((beforeProducts || []).map((p) => [p.id, p.stock_quantity]));
 
     const { error } = await supabase.rpc('approve_order', { p_order_id: id });
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) return res.status(400).json({ error: friendlyRpcErrorMessage(error.message) });
 
     const { data: afterProducts } = await supabase
       .from('products')
@@ -122,7 +123,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     await Promise.all((afterProducts || []).map((product) => notifyIfLowStockCrossing(previousStockById.get(product.id), product)));
   } else if (status === 'cancelled') {
     const { error } = await supabase.rpc('cancel_order', { p_order_id: id });
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) return res.status(400).json({ error: friendlyRpcErrorMessage(error.message) });
   } else {
     // e.g. 'processing', 'completed', 'ready_for_collection' -- plain status
     // moves with no stock side effect, routed through the single

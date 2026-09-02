@@ -6,6 +6,7 @@ import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 // Action pairs per review reason -- mirrors resolveReview's branching in
 // adminReviewService.js exactly, so the buttons shown here are always ones
@@ -41,6 +42,7 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState(null);
   const [error, setError] = useState('');
+  const [pendingConfirm, setPendingConfirm] = useState(null); // { reviewId, action, label } | null
   const navigate = useNavigate();
 
   const load = () => getPendingReviews().then(({ data }) => setReviews(data));
@@ -59,12 +61,24 @@ export default function AdminReviewsPage() {
       setError(err.response?.data?.error || 'Could not resolve this review.');
     } finally {
       setActingId(null);
+      setPendingConfirm(null);
     }
+  };
+
+  // 'reject'/'cancel' (the danger-variant actions) end the order/payment
+  // outright and can't be undone from here -- worth a confirm step, unlike
+  // 'approve'/'acknowledge' which just let the automated path continue.
+  const handleActionClick = (review, { action, variant, label }) => {
+    if (variant === 'danger') {
+      setPendingConfirm({ reviewId: review.id, action, label, orderNumber: review.orders?.order_number });
+      return;
+    }
+    handleResolve(review.id, action);
   };
 
   return (
     <div>
-      <h1 className="font-display text-xl font-semibold text-ink">Admin review queue</h1>
+      <h1 className="font-display text-xl font-semibold text-ink">Review queue</h1>
       <p className="mt-1 text-sm text-slate-500">
         Orders the automated checkout couldn't fully handle on its own -- worked independently, one at a time.
       </p>
@@ -101,14 +115,14 @@ export default function AdminReviewsPage() {
                   >
                     View order
                   </Button>
-                  {(REASON_ACTIONS[review.reason] || []).map(({ action, label, variant }) => (
+                  {(REASON_ACTIONS[review.reason] || []).map((entry) => (
                     <Button
-                      key={action}
-                      variant={variant}
-                      onClick={() => handleResolve(review.id, action)}
+                      key={entry.action}
+                      variant={entry.variant}
+                      onClick={() => handleActionClick(review, entry)}
                       disabled={actingId === review.id}
                     >
-                      {label}
+                      {entry.label}
                     </Button>
                   ))}
                 </div>
@@ -116,6 +130,17 @@ export default function AdminReviewsPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {pendingConfirm && (
+        <ConfirmDialog
+          title={`${pendingConfirm.label}?`}
+          message={`This will ${pendingConfirm.label.toLowerCase()} order #${pendingConfirm.orderNumber}. This can't be undone.`}
+          confirmLabel={pendingConfirm.label}
+          onConfirm={() => handleResolve(pendingConfirm.reviewId, pendingConfirm.action)}
+          onCancel={() => setPendingConfirm(null)}
+          loading={actingId === pendingConfirm.reviewId}
+        />
       )}
     </div>
   );

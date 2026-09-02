@@ -7,6 +7,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Card from '../../components/ui/Card';
 import PaymentForm from '../../components/PaymentForm';
 
@@ -36,6 +37,7 @@ export default function AdminOrderDetailPage() {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const load = () =>
     getOrderById(id).then(({ data }) => {
@@ -48,7 +50,7 @@ export default function AdminOrderDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const handleUpdate = async () => {
+  const applyStatusUpdate = async () => {
     setError('');
     setUpdating(true);
     try {
@@ -58,7 +60,19 @@ export default function AdminOrderDetailPage() {
       setError(err.response?.data?.error || 'Could not update this order.');
     } finally {
       setUpdating(false);
+      setShowCancelConfirm(false);
     }
+  };
+
+  // Cancelling restocks/reverses the order and can't be undone from here --
+  // worth a confirm step, unlike the other (forward-moving, reversible-by-
+  // just-picking-another-status) transitions.
+  const handleUpdate = () => {
+    if (nextStatus === 'cancelled') {
+      setShowCancelConfirm(true);
+      return;
+    }
+    applyStatusUpdate();
   };
 
   const handleSubmitPayment = async (payload) => {
@@ -90,10 +104,17 @@ export default function AdminOrderDetailPage() {
       <div className="mt-3 flex items-center justify-between">
         <div>
           <h1 className="font-display text-xl font-semibold text-ink">
-            Order <span className="font-mono text-base text-slate-400">#{order.id.slice(0, 8)}</span>
+            Order <span className="font-mono text-base text-slate-400">#{order.order_number}</span>
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {order.users?.company_name || order.users?.email} · Placed {formatDate(order.created_at)}
+            {order.customer_id ? (
+              <Link to={`/admin/customers/${order.customer_id}`} className="text-teal-600 hover:underline">
+                {order.users?.company_name || order.users?.email}
+              </Link>
+            ) : (
+              order.users?.company_name || order.users?.email
+            )}{' '}
+            · Placed {formatDate(order.created_at)}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -152,10 +173,10 @@ export default function AdminOrderDetailPage() {
                 onChange={(e) => setNextStatus(e.target.value)}
                 className="rounded-lg border border-slate-200 px-3 py-2 text-sm capitalize outline-none transition-colors duration-150 focus:border-teal-500"
               >
-                <option value={order.status}>{order.status.replace('_', ' ')} (current)</option>
+                <option value={order.status}>{order.status.replace(/_/g, ' ')} (current)</option>
                 {nextOptions.map((status) => (
                   <option key={status} value={status}>
-                    {status.replace('_', ' ')}
+                    {status.replace(/_/g, ' ')}
                   </option>
                 ))}
               </select>
@@ -175,6 +196,17 @@ export default function AdminOrderDetailPage() {
             onCancel={() => setShowPaymentModal(false)}
           />
         </Modal>
+      )}
+
+      {showCancelConfirm && (
+        <ConfirmDialog
+          title="Cancel this order?"
+          message={`Order #${order.order_number} will be cancelled and any reserved/decremented stock will be restored. This can't be undone.`}
+          confirmLabel="Cancel order"
+          onConfirm={applyStatusUpdate}
+          onCancel={() => setShowCancelConfirm(false)}
+          loading={updating}
+        />
       )}
     </div>
   );

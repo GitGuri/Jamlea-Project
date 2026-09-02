@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getAllPaymentsAdmin, updatePaymentStatus } from '../../api/payments';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 import Card from '../../components/ui/Card';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState(null);
   const [error, setError] = useState('');
+  const [rejectingPayment, setRejectingPayment] = useState(null); // payment | null
 
   const load = () => getAllPaymentsAdmin().then(({ data }) => setPayments(data));
 
@@ -28,6 +31,7 @@ export default function AdminPaymentsPage() {
       setError(err.response?.data?.error || 'Could not update this payment.');
     } finally {
       setActingId(null);
+      setRejectingPayment(null);
     }
   };
 
@@ -62,8 +66,10 @@ export default function AdminPaymentsPage() {
             <tbody className="divide-y divide-slate-100">
               {payments.map((payment) => (
                 <tr key={payment.id}>
-                  <td className="px-4 py-3 font-mono text-xs text-teal-600">
-                    #{payment.order_id.slice(0, 8)}
+                  <td className="px-4 py-3 font-mono text-xs">
+                    <Link to={`/admin/orders/${payment.order_id}`} className="text-teal-600 hover:underline">
+                      #{payment.orders?.order_number}
+                    </Link>
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-ink">{payment.users?.company_name || payment.users?.email}</p>
@@ -89,7 +95,7 @@ export default function AdminPaymentsPage() {
                           Approve
                         </button>
                         <button
-                          onClick={() => handleReview(payment.id, 'rejected')}
+                          onClick={() => setRejectingPayment(payment)}
                           disabled={actingId === payment.id}
                           className="ml-3 text-xs font-medium text-bad-500 transition-colors duration-150 hover:underline disabled:opacity-50"
                         >
@@ -103,6 +109,17 @@ export default function AdminPaymentsPage() {
             </tbody>
           </table>
         </Card>
+      )}
+
+      {rejectingPayment && (
+        <ConfirmDialog
+          title="Reject this payment?"
+          message={`This marks the payment for order #${rejectingPayment.orders?.order_number} as rejected. The customer can resubmit a new payment afterward. This can't be undone.`}
+          confirmLabel="Reject payment"
+          onConfirm={() => handleReview(rejectingPayment.id, 'rejected')}
+          onCancel={() => setRejectingPayment(null)}
+          loading={actingId === rejectingPayment.id}
+        />
       )}
     </div>
   );

@@ -71,7 +71,7 @@ export default function AdminOrdersPage() {
                   className="cursor-pointer transition-colors duration-150 hover:bg-slate-50"
                   onClick={() => navigate(`/admin/orders/${order.id}`)}
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-teal-600">#{order.id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-teal-600">#{order.order_number}</td>
                   <td className="px-4 py-3">
                     <p className="text-ink">{order.users?.company_name || order.users?.email}</p>
                     {order.users?.company_name && (

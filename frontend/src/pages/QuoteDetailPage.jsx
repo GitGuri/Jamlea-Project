@@ -130,12 +130,22 @@ export default function QuoteDetailPage() {
           </Button>
           {canConvert && (
             <>
-              <Button variant="secondary" onClick={handleConvert} loading={converting} disabled={checkingOut}>
-                Convert to order
-              </Button>
-              <Button onClick={handleFastCheckout} loading={checkingOut} disabled={converting}>
-                Checkout now
-              </Button>
+              <div className="flex flex-col items-center gap-1">
+                <Button variant="secondary" onClick={handleConvert} loading={converting} disabled={checkingOut}>
+                  Convert to order
+                </Button>
+                <p className="max-w-[10rem] text-center text-xs text-slate-400">
+                  Sent for staff review first, pay by EFT once approved
+                </p>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <Button onClick={handleFastCheckout} loading={checkingOut} disabled={converting}>
+                  Checkout now
+                </Button>
+                <p className="max-w-[10rem] text-center text-xs text-slate-400">
+                  Stock reserved immediately, pay by card or EFT right away
+                </p>
+              </div>
             </>
           )}
           {quote.status === 'converted' && (

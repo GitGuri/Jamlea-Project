@@ -73,6 +73,7 @@ const createProductRules = [
   body('supplier_location').isString().notEmpty(),
   body('supplier_phone').isString().notEmpty(),
   body('supplier_email').optional({ values: 'falsy' }).isEmail(),
+  body('supplier_cost').optional({ values: 'falsy' }).isFloat({ min: 0 }),
 ];
 
 const updateProductRules = [
@@ -88,6 +89,7 @@ const updateProductRules = [
   body('supplier_location').optional().isString().notEmpty(),
   body('supplier_phone').optional().isString().notEmpty(),
   body('supplier_email').optional({ values: 'falsy' }).isEmail(),
+  body('supplier_cost').optional({ values: 'falsy' }).isFloat({ min: 0 }),
 ];
 
 router.post(

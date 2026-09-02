@@ -45,6 +45,7 @@ const WRITABLE_FIELDS = [
   'supplier_location',
   'supplier_email',
   'supplier_phone',
+  'supplier_cost',
 ];
 
 function pickWritableFields(body) {

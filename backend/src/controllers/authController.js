@@ -10,7 +10,7 @@ const { logActivity } = require('../services/activityLogService');
 // reviewStaffSignupAdmin. 'admin' can never be requested here; an admin can
 // promote an approved sales_rep later if needed.
 const register = asyncHandler(async (req, res) => {
-  const { email, password, company_name, full_name, role, phone } = req.body;
+  const { email, password, company_name, full_name, role, phone, vat_number } = req.body;
   const requestedRole = role || 'customer';
 
   if (!['customer', 'sales_rep'].includes(requestedRole)) {
@@ -63,10 +63,11 @@ const register = asyncHandler(async (req, res) => {
         role: requestedRole,
         status,
         phone: normalizedPhone,
+        vat_number: vat_number || null,
       },
       { onConflict: 'id' }
     )
-    .select('id, email, company_name, full_name, role, status, phone')
+    .select('id, email, company_name, full_name, role, status, phone, vat_number')
     .single();
 
   if (profileError) return res.status(500).json({ error: profileError.message });

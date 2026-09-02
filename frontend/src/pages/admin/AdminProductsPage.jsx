@@ -5,6 +5,7 @@ import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 import Modal from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Card from '../../components/ui/Card';
 import ProductForm from '../../components/admin/ProductForm';
 import ProductImportModal from '../../components/admin/ProductImportModal';
@@ -21,6 +22,7 @@ export default function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(null); // product | null
 
   const load = () => {
     setLoading(true);
@@ -70,7 +72,6 @@ export default function AdminProductsPage() {
   };
 
   const handleDelete = async (product) => {
-    if (!window.confirm(`Delete "${product.name}"? This can't be undone.`)) return;
     setDeleteError('');
     setDeletingId(product.id);
     try {
@@ -80,6 +81,7 @@ export default function AdminProductsPage() {
       setDeleteError(err.response?.data?.error || 'Could not delete this product.');
     } finally {
       setDeletingId(null);
+      setConfirmingDelete(null);
     }
   };
 
@@ -165,7 +167,7 @@ export default function AdminProductsPage() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(product)}
+                        onClick={() => setConfirmingDelete(product)}
                         disabled={deletingId === product.id}
                         className="ml-3 text-xs font-medium text-bad-500 transition-colors duration-150 hover:underline disabled:opacity-50"
                       >
@@ -227,9 +229,34 @@ export default function AdminProductsPage() {
                 <dt className="text-xs uppercase tracking-wide text-slate-500">Email</dt>
                 <dd className="mt-0.5 text-ink">{editingProduct.supplier_email || 'Not provided'}</dd>
               </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-slate-500">Cost price</dt>
+                <dd className="mt-0.5 text-ink">
+                  {editingProduct.supplier_cost != null ? formatCurrency(editingProduct.supplier_cost) : 'Not provided'}
+                </dd>
+              </div>
+              {editingProduct.supplier_cost != null && (
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-slate-500">Margin</dt>
+                  <dd className="mt-0.5 text-ink">
+                    {formatCurrency(editingProduct.unit_price - editingProduct.supplier_cost)}
+                  </dd>
+                </div>
+              )}
             </dl>
           </div>
         </Modal>
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="Delete this product?"
+          message={`"${confirmingDelete.name}" will be permanently removed from the catalog. This can't be undone.`}
+          confirmLabel="Delete product"
+          onConfirm={() => handleDelete(confirmingDelete)}
+          onCancel={() => setConfirmingDelete(null)}
+          loading={deletingId === confirmingDelete.id}
+        />
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 const supabase = require('../config/supabase');
 const { reviewPayment } = require('./paymentService');
+const { friendlyRpcErrorMessage } = require('../utils/rpcErrorMessage');
 
 const HIGH_VALUE_STATUSES = ['completed', 'confirmed', 'ready_for_collection'];
 
@@ -82,7 +83,7 @@ async function resolveReview(reviewId, action, reviewerId) {
     }
     const rpc = action === 'approve' ? 'approve_order' : 'cancel_order';
     const { error } = await supabase.rpc(rpc, { p_order_id: review.order_id });
-    if (error) return { error: error.message, status: 400 };
+    if (error) return { error: friendlyRpcErrorMessage(error.message), status: 400 };
   } else if (review.reason === 'manual_payment') {
     if (!['approve', 'reject'].includes(action)) {
       return { error: "Action must be 'approve' or 'reject' for a manual_payment review.", status: 400 };
@@ -109,7 +110,7 @@ async function resolveReview(reviewId, action, reviewerId) {
     }
     if (action === 'cancel') {
       const { error } = await supabase.rpc('cancel_order', { p_order_id: review.order_id });
-      if (error) return { error: error.message, status: 400 };
+      if (error) return { error: friendlyRpcErrorMessage(error.message), status: 400 };
     }
   }
 

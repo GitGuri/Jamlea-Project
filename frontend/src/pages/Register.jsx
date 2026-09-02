@@ -10,6 +10,7 @@ export default function Register() {
   const navigate = useNavigate();
   const [accountType, setAccountType] = useState('customer');
   const [companyName, setCompanyName] = useState('');
+  const [vatNumber, setVatNumber] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -31,7 +32,8 @@ export default function Register() {
         isStaffSignup ? null : companyName,
         isStaffSignup ? 'sales_rep' : 'customer',
         isStaffSignup ? fullName : null,
-        phone || null
+        phone || null,
+        isStaffSignup ? null : vatNumber || null
       );
       if (result?.pending) {
         setPendingMessage(result.message);
@@ -96,16 +98,28 @@ export default function Register() {
                   />
                 </div>
               ) : (
-                <div>
-                  <label className="block text-xs font-medium text-slate-600">Company name</label>
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500"
-                    placeholder="Acme Inc."
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600">Company name</label>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500"
+                      placeholder="Acme Inc."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600">VAT number (optional)</label>
+                    <input
+                      type="text"
+                      value={vatNumber}
+                      onChange={(e) => setVatNumber(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500"
+                      placeholder="If your business is VAT-registered"
+                    />
+                  </div>
+                </>
               )}
 
               <div>
