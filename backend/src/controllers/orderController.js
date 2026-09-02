@@ -119,9 +119,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
       .from('products')
       .select('id, sku, name, stock_quantity')
       .in('id', productIds);
-    for (const product of afterProducts || []) {
-      await notifyIfLowStockCrossing(previousStockById.get(product.id), product);
-    }
+    await Promise.all((afterProducts || []).map((product) => notifyIfLowStockCrossing(previousStockById.get(product.id), product)));
   } else if (status === 'cancelled') {
     const { error } = await supabase.rpc('cancel_order', { p_order_id: id });
     if (error) return res.status(400).json({ error: error.message });
@@ -139,25 +137,28 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     message: `Your order #${order.order_number} is now "${status.replace('_', ' ')}".`,
   };
 
-  await notifyUser({
-    userId: order.customer_id,
-    type: 'order_status_changed',
-    title,
-    message,
-    relatedType: 'order',
-    relatedId: id,
-    email: order.users?.email,
-    phone: order.users?.phone,
-  });
-
-  await logActivity({
-    actorId: req.user.id,
-    actorLabel: req.user.company_name || req.user.email,
-    action: 'order.status_changed',
-    entityType: 'order',
-    entityId: id,
-    description: `${req.user.company_name || req.user.email} changed order #${order.order_number} from "${order.status}" to "${status}".`,
-  });
+  // Independent writes to unrelated tables -- run concurrently rather than
+  // paying for two sequential round-trips.
+  await Promise.all([
+    notifyUser({
+      userId: order.customer_id,
+      type: 'order_status_changed',
+      title,
+      message,
+      relatedType: 'order',
+      relatedId: id,
+      email: order.users?.email,
+      phone: order.users?.phone,
+    }),
+    logActivity({
+      actorId: req.user.id,
+      actorLabel: req.user.company_name || req.user.email,
+      action: 'order.status_changed',
+      entityType: 'order',
+      entityId: id,
+      description: `${req.user.company_name || req.user.email} changed order #${order.order_number} from "${order.status}" to "${status}".`,
+    }),
+  ]);
 
   return res.json({ message: 'Order status updated', orderId: id, status });
 });

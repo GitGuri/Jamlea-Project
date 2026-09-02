@@ -5,19 +5,7 @@ const { transitionOrderStatus } = require('../services/orderStateService');
 const { notifyUser } = require('../services/notificationService');
 const { logActivity } = require('../services/activityLogService');
 
-// PayFast's ITN (Instant Transaction Notification) -- the only path that's
-// ever trusted to confirm a payment. The browser return_url redirect is
-// never trusted for state changes (per PayFast's own docs); it only ever
-// triggers the frontend to re-poll GET /orders/:orderId/status.
-//
-// Responds 200 once a payload is understood but logically rejected
-// (signature mismatch, failed re-validation, unmatched order) -- those will
-// never succeed on retry, so acknowledging stops PayFast from retrying a
-// notification that's never going anywhere. A genuine unexpected error
-// (thrown, caught by asyncHandler -> the app's error middleware -> a 5xx)
-// deliberately does NOT get swallowed to 200 here, since that's exactly the
-// case where PayFast's own retry is useful -- a transient failure on our
-// end should be retried once we recover, not silently dropped.
+
 const receiveItn = asyncHandler(async (req, res) => {
   const fields = req.body; // parsed application/x-www-form-urlencoded, see payfastRoutes.js
   const rawBody = req.rawBody ? req.rawBody.toString('utf8') : '';
@@ -93,23 +81,27 @@ const receiveItn = asyncHandler(async (req, res) => {
     if (result.error) {
       console.error('PayFast ITN: could not transition order to confirmed:', result.error);
     } else {
-      await notifyUser({
-        userId: order.customer_id,
-        type: 'order_status_changed',
-        title: 'Payment confirmed',
-        message: `Your payment for order #${order.order_number} was confirmed and your order is now being fulfilled.`,
-        relatedType: 'order',
-        relatedId: orderId,
-        email: order.users?.email,
-        phone: order.users?.phone,
-      });
-      await logActivity({
-        actorLabel: 'PayFast (automated)',
-        action: 'order.status_changed',
-        entityType: 'order',
-        entityId: orderId,
-        description: `PayFast confirmed payment for order #${order.order_number}; status moved to "confirmed".`,
-      });
+      // Independent writes -- PayFast is waiting on this response, so run
+      // them concurrently rather than serializing two round-trips.
+      await Promise.all([
+        notifyUser({
+          userId: order.customer_id,
+          type: 'order_status_changed',
+          title: 'Payment confirmed',
+          message: `Your payment for order #${order.order_number} was confirmed and your order is now being fulfilled.`,
+          relatedType: 'order',
+          relatedId: orderId,
+          email: order.users?.email,
+          phone: order.users?.phone,
+        }),
+        logActivity({
+          actorLabel: 'PayFast (automated)',
+          action: 'order.status_changed',
+          entityType: 'order',
+          entityId: orderId,
+          description: `PayFast confirmed payment for order #${order.order_number}; status moved to "confirmed".`,
+        }),
+      ]);
     }
   }
 

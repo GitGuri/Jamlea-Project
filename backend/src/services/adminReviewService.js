@@ -17,16 +17,18 @@ async function insertReview(orderId, reason) {
 // automated path (stock reservation/PayFast payment proceed normally either
 // way, per "never block other customers' orders").
 async function flagIfNeeded(orderId, customerId, totalAmount) {
-  if (Number(totalAmount) > threshold()) {
-    await insertReview(orderId, 'high_value');
-  }
-
-  const { count, error } = await supabase
-    .from('orders')
-    .select('id', { count: 'exact', head: true })
-    .eq('customer_id', customerId)
-    .in('status', HIGH_VALUE_STATUSES)
-    .neq('id', orderId);
+  // The high-value insert and the new-customer history count don't depend
+  // on each other -- kick both off together instead of paying for them
+  // sequentially on the checkout path.
+  const [, { count, error }] = await Promise.all([
+    Number(totalAmount) > threshold() ? insertReview(orderId, 'high_value') : Promise.resolve(),
+    supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('customer_id', customerId)
+      .in('status', HIGH_VALUE_STATUSES)
+      .neq('id', orderId),
+  ]);
   if (error) throw error;
 
   if (!count) {

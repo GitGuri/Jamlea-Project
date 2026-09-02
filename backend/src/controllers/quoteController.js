@@ -177,40 +177,47 @@ const checkoutQuoteFast = asyncHandler(async (req, res) => {
 
   const customerLabel = req.user.company_name || req.user.email;
 
+  // Three independent writes (admin_reviews, notifications+email, activity_log)
+  // -- run concurrently rather than serializing them on the checkout path
+  // this whole fast-checkout feature exists to keep snappy.
   if (result.order_status === 'stock_reserved') {
-    await flagIfNeeded(result.order_id, req.user.id, order.total_amount);
-    await notifyInternalTeam({
-      type: 'general',
-      title: 'Fast checkout -- stock reserved',
-      message: `${customerLabel} reserved stock for order #${order.order_number} (${formatCurrency(order.total_amount)}) and can now pay via PayFast.`,
-      relatedType: 'order',
-      relatedId: result.order_id,
-    });
-    await logActivity({
-      actorId: req.user.id,
-      actorLabel: customerLabel,
-      action: 'quote.converted',
-      entityType: 'order',
-      entityId: result.order_id,
-      description: `${customerLabel} used fast checkout to create order #${order.order_number} (${formatCurrency(order.total_amount)}); stock reserved, awaiting PayFast payment.`,
-    });
+    await Promise.all([
+      flagIfNeeded(result.order_id, req.user.id, order.total_amount),
+      notifyInternalTeam({
+        type: 'general',
+        title: 'Fast checkout -- stock reserved',
+        message: `${customerLabel} reserved stock for order #${order.order_number} (${formatCurrency(order.total_amount)}) and can now pay via PayFast.`,
+        relatedType: 'order',
+        relatedId: result.order_id,
+      }),
+      logActivity({
+        actorId: req.user.id,
+        actorLabel: customerLabel,
+        action: 'quote.converted',
+        entityType: 'order',
+        entityId: result.order_id,
+        description: `${customerLabel} used fast checkout to create order #${order.order_number} (${formatCurrency(order.total_amount)}); stock reserved, awaiting PayFast payment.`,
+      }),
+    ]);
   } else {
-    await flagStockShort(result.order_id);
-    await notifyInternalTeam({
-      type: 'general',
-      title: 'Fast checkout -- stock shortfall',
-      message: `${customerLabel}'s fast checkout for order #${order.order_number} hit insufficient stock and needs manual review.`,
-      relatedType: 'order',
-      relatedId: result.order_id,
-    });
-    await logActivity({
-      actorId: req.user.id,
-      actorLabel: customerLabel,
-      action: 'quote.converted',
-      entityType: 'order',
-      entityId: result.order_id,
-      description: `${customerLabel}'s fast checkout for order #${order.order_number} hit a stock shortfall and fell back to manual review.`,
-    });
+    await Promise.all([
+      flagStockShort(result.order_id),
+      notifyInternalTeam({
+        type: 'general',
+        title: 'Fast checkout -- stock shortfall',
+        message: `${customerLabel}'s fast checkout for order #${order.order_number} hit insufficient stock and needs manual review.`,
+        relatedType: 'order',
+        relatedId: result.order_id,
+      }),
+      logActivity({
+        actorId: req.user.id,
+        actorLabel: customerLabel,
+        action: 'quote.converted',
+        entityType: 'order',
+        entityId: result.order_id,
+        description: `${customerLabel}'s fast checkout for order #${order.order_number} hit a stock shortfall and fell back to manual review.`,
+      }),
+    ]);
   }
 
   return res.status(201).json({
