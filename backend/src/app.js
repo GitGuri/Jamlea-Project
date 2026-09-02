@@ -19,6 +19,17 @@ const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+// Render (and most PaaS hosts) put this app behind a reverse proxy, which
+// sets X-Forwarded-For to the real client IP. Without telling Express to
+// trust exactly one hop of proxy, express-rate-limit (authRoutes.js) can't
+// safely tell one real client IP from another -- it logged a warning every
+// request rather than silently misbehaving, but "trust proxy: false" is
+// still wrong here. `1` (not `true`) trusts only the first proxy hop, since
+// that's genuinely how many sit between the client and this app on Render --
+// trusting more than actually exist would let a client spoof its own IP via
+// a forged X-Forwarded-For header.
+app.set('trust proxy', 1);
+
 // Global Middlewares
 app.use(helmet());
 app.use(cors());
