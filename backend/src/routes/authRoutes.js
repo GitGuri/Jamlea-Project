@@ -24,8 +24,15 @@ const emailPasswordRules = [
 const registerRules = [
   ...emailPasswordRules,
   body('role').optional().isIn(['customer', 'sales_rep']).withMessage("Role must be 'customer' or 'sales_rep'"),
-  body('full_name').optional().isString(),
-  body('phone').optional().isString(),
+  // { values: 'falsy' } matters here, not just style: Register.jsx always
+  // sends full_name/phone/vat_number as an explicit `null` (not an omitted
+  // key) when left blank -- express-validator's default .optional() only
+  // skips validation for an *absent* field (undefined), not one explicitly
+  // set to null, so plain .optional().isString() rejected every customer
+  // signup that left any of these blank with a bare "Invalid value".
+  body('full_name').optional({ values: 'falsy' }).isString(),
+  body('phone').optional({ values: 'falsy' }).isString(),
+  body('vat_number').optional({ values: 'falsy' }).isString(),
 ];
 
 // Only guards the credential-guessing surface (register/login). Scoped here
