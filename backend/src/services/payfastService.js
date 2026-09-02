@@ -78,6 +78,14 @@ function verifyItnSignature(rawFields) {
   if (!signature) return false;
 
   const expected = computeSignature(rest, process.env.PAYFAST_PASSPHRASE);
+
+  // TEMPORARY DEBUG -- remove once the live ITN signature mismatch is
+  // diagnosed. Logs exactly what PayFast posted and what we computed from
+  // it, since guessing at settings pages we can't see isn't converging.
+  console.log('PAYFAST ITN DEBUG fields received:', JSON.stringify(rest));
+  console.log('PAYFAST ITN DEBUG signature received:', signature);
+  console.log('PAYFAST ITN DEBUG signature expected:', expected);
+
   try {
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
   } catch {
