@@ -82,6 +82,40 @@ describe('payfastService', () => {
       expect(verifyItnSignature(fields)).toBe(true);
     });
 
+    it('validates a real captured PayFast ITN payload with blank fields (regression: PayFast signs blanks on this direction, unlike the outbound checkout signature which must skip them)', () => {
+      process.env.PAYFAST_PASSPHRASE = '';
+      const { verifyItnSignature } = require('../payfastService');
+      // Captured live from a real PayFast sandbox ITN callback -- this exact
+      // payload was silently rejected before computeSignature() learned to
+      // treat the ITN direction differently from the checkout direction.
+      const realItnPayload = {
+        m_payment_id: '9ea73809-884e-46e1-8c53-ad15b1268cd3',
+        pf_payment_id: '3363096',
+        payment_status: 'COMPLETE',
+        item_name: 'Order #45',
+        item_description: '',
+        amount_gross: '10300.00',
+        amount_fee: '-236.90',
+        amount_net: '10063.10',
+        custom_str1: '',
+        custom_str2: '',
+        custom_str3: '',
+        custom_str4: '',
+        custom_str5: '',
+        custom_int1: '',
+        custom_int2: '',
+        custom_int3: '',
+        custom_int4: '',
+        custom_int5: '',
+        name_first: 'QweQwe',
+        name_last: '',
+        email_address: 'leeroygit7@gmail.com',
+        merchant_id: '10053760',
+        signature: '84be2167856ec0f1860925c082f395db',
+      };
+      expect(verifyItnSignature(realItnPayload)).toBe(true);
+    });
+
     it('rejects a payload whose signature does not match its fields', () => {
       const { verifyItnSignature } = require('../payfastService');
       const tampered = {

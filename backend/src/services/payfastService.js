@@ -5,10 +5,11 @@
 // this server-to-server notify path is, after both the signature check and
 // the mandatory re-validation call below succeed.
 //
-// NOTE: this is structurally complete against PayFast's documented
-// algorithm, but hasn't been exercised against PayFast's actual servers --
-// that needs real PAYFAST_MERCHANT_ID/PAYFAST_MERCHANT_KEY/PAYFAST_PASSPHRASE
-// in .env, which weren't available while this was built.
+// Verified end-to-end against a real PayFast sandbox transaction. That
+// exercise caught a real bug (see computeSignature's skipEmpty comment
+// below) that no amount of reading PayFast's docs surfaced -- ITN
+// signatures include PayFast's blank custom_str/custom_int/etc. fields,
+// which the outbound checkout signature must instead omit.
 
 const crypto = require('crypto');
 
@@ -37,10 +38,21 @@ function payfastEncode(value) {
   return encodeURIComponent(String(value).trim()).replace(/%20/g, '+');
 }
 
-function computeSignature(fields, passphrase) {
-  const pairs = Object.entries(fields)
-    .filter(([, value]) => value !== undefined && value !== null && value !== '')
-    .map(([key, value]) => `${key}=${payfastEncode(value)}`);
+// skipEmpty matters and differs by direction, confirmed against a real ITN
+// payload: when *generating* a signature for the checkout request, PayFast's
+// docs say to exclude blank variables -- but when they send an ITN back,
+// they sign every field they post, including the blank custom_str1-5/
+// custom_int1-5/item_description/name_last fields PayFast always includes.
+// Sharing one filter behavior between both directions silently broke ITN
+// signature verification for every single transaction (checkoutFields never
+// has a genuinely blank value in practice, so skipEmpty:true is a no-op
+// there either way -- this only ever mattered for the ITN direction).
+function computeSignature(fields, passphrase, { skipEmpty } = { skipEmpty: true }) {
+  let entries = Object.entries(fields);
+  if (skipEmpty) {
+    entries = entries.filter(([, value]) => value !== undefined && value !== null && value !== '');
+  }
+  const pairs = entries.map(([key, value]) => `${key}=${payfastEncode(value)}`);
 
   if (passphrase) {
     pairs.push(`passphrase=${payfastEncode(passphrase)}`);
@@ -77,14 +89,7 @@ function verifyItnSignature(rawFields) {
   const { signature, ...rest } = rawFields;
   if (!signature) return false;
 
-  const expected = computeSignature(rest, process.env.PAYFAST_PASSPHRASE);
-
-  // TEMPORARY DEBUG -- remove once the live ITN signature mismatch is
-  // diagnosed. Logs exactly what PayFast posted and what we computed from
-  // it, since guessing at settings pages we can't see isn't converging.
-  console.log('PAYFAST ITN DEBUG fields received:', JSON.stringify(rest));
-  console.log('PAYFAST ITN DEBUG signature received:', signature);
-  console.log('PAYFAST ITN DEBUG signature expected:', expected);
+  const expected = computeSignature(rest, process.env.PAYFAST_PASSPHRASE, { skipEmpty: false });
 
   try {
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
