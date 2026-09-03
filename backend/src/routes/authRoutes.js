@@ -75,8 +75,16 @@ router.post(
   validate,
   resetPassword
 );
+const updateMeRules = [
+  body('phone').optional({ values: 'falsy' }).isString(),
+  body('company_name').optional({ values: 'falsy' }).isString(),
+  body('full_name').optional({ values: 'falsy' }).isString(),
+  body('vat_number').optional({ values: 'falsy' }).isString(),
+  body('address').optional({ values: 'falsy' }).isString(),
+];
+
 router.get('/me', authenticateToken, getMe);
-router.patch('/me', authenticateToken, body('phone').isString().notEmpty(), validate, updateMe);
+router.patch('/me', authenticateToken, updateMeRules, validate, updateMe);
 router.get('/staff/pending', authenticateToken, requireRole(['admin']), getPendingStaffAdmin);
 router.patch(
   '/staff/:id/status',

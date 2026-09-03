@@ -7,6 +7,28 @@ const { buildCheckoutFields } = require('../services/payfastService');
 const { logActivity } = require('../services/activityLogService');
 const { friendlyRpcErrorMessage } = require('../utils/rpcErrorMessage');
 
+// Adds a server-computed seconds_remaining to each stock_reservations row,
+// alongside the raw expires_at. The frontend's countdown used to compare
+// expires_at directly against the customer's own device clock -- which
+// looks "already expired" the instant a reservation is created whenever
+// that device's clock disagrees with real time (wrong timezone, no NTP
+// sync, a phone that's just plain wrong -- all common). Computing the
+// remaining time here, on this one server clock, and shipping a plain
+// relative number instead of an absolute timestamp means the frontend never
+// needs to trust the client's own clock at all -- it just counts this
+// number down locally.
+function withReservationSecondsRemaining(order) {
+  if (!order?.stock_reservations) return order;
+  const nowMs = Date.now();
+  return {
+    ...order,
+    stock_reservations: order.stock_reservations.map((r) => ({
+      ...r,
+      seconds_remaining: Math.max(0, Math.round((new Date(r.expires_at).getTime() - nowMs) / 1000)),
+    })),
+  };
+}
+
 // What a human can pick from the admin status dropdown. Deliberately
 // excludes 'stock_reserved' (only ever set by checkout_quote_with_reservation
 // at order creation) and 'confirmed' (only ever set by the verified PayFast
@@ -72,7 +94,7 @@ const getOrderById = asyncHandler(async (req, res) => {
 
   const { data, error } = await query.single();
   if (error || !data) return res.status(404).json({ error: 'Order not found' });
-  return res.json(data);
+  return res.json(withReservationSecondsRemaining(data));
 });
 
 // Admin/sales_rep only. Approval and cancellation run through Postgres functions
@@ -202,7 +224,7 @@ const getOrderStatus = asyncHandler(async (req, res) => {
 
   const { data, error } = await query.single();
   if (error || !data) return res.status(404).json({ error: 'Order not found' });
-  return res.json(data);
+  return res.json(withReservationSecondsRemaining(data));
 });
 
 module.exports = {

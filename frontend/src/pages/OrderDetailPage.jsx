@@ -13,19 +13,33 @@ import PayfastRedirectForm from '../components/PayfastRedirectForm';
 
 const POLL_MS = 5000;
 
-function ReservationCountdown({ expiresAt }) {
-  const [now, setNow] = useState(() => Date.now());
+// Counts down a plain number of seconds the *server* already computed
+// (orderController.js's withReservationSecondsRemaining), rather than
+// comparing an absolute expires_at timestamp against this device's own
+// clock. That used to show "expired" the instant a reservation was created
+// whenever the customer's device clock disagreed with real time (wrong
+// timezone, no NTP sync, a phone that's just wrong -- all common) -- ticking
+// down a relative number locally is immune to that, since it never needs to
+// trust the client's own idea of "now" for anything but counting seconds.
+function ReservationCountdown({ secondsRemaining: initialSeconds }) {
+  const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
+
+  // Resync whenever the parent hands us a fresh server-computed value
+  // (the periodic poll, or a full reload) -- corrects for drift since the
+  // last sync instead of just trusting an ever-more-stale local countdown.
+  useEffect(() => {
+    setSecondsLeft(initialSeconds);
+  }, [initialSeconds]);
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const timer = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const msLeft = new Date(expiresAt).getTime() - now;
-  if (msLeft <= 0) return <p className="text-sm text-bad-500">Reservation expired -- refreshing...</p>;
+  if (secondsLeft <= 0) return <p className="text-sm text-bad-500">Reservation expired -- refreshing...</p>;
 
-  const minutes = Math.floor(msLeft / 60000);
-  const seconds = Math.floor((msLeft % 60000) / 1000);
+  const minutes = Math.floor(secondsLeft / 60);
+  const seconds = secondsLeft % 60;
   return (
     <p className="text-sm text-amber-600">
       Stock reserved -- pay within {minutes}:{String(seconds).padStart(2, '0')} or it releases automatically.
@@ -153,7 +167,7 @@ export default function OrderDetailPage() {
 
       {isStockReserved && !activePayment && reservation && (
         <Card className="mt-6 p-4">
-          <ReservationCountdown expiresAt={reservation.expires_at} />
+          <ReservationCountdown secondsRemaining={reservation.seconds_remaining} />
         </Card>
       )}
 

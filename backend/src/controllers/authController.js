@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { notifyUser, notifyInternalTeam, sendEmail } = require('../services/notificationService');
 const { normalizePhone, findUserByPhone } = require('../services/whatsappConversationService');
 const { logActivity } = require('../services/activityLogService');
+const { PROFILE_FIELDS } = require('../utils/userProfileFields');
 
 // Public self-registration. Defaults to a 'customer' account (immediate
 // access, unchanged from before). Requesting 'sales_rep' instead lands the
@@ -67,7 +68,7 @@ const register = asyncHandler(async (req, res) => {
       },
       { onConflict: 'id' }
     )
-    .select('id, email, company_name, full_name, role, status, phone, vat_number')
+    .select(PROFILE_FIELDS)
     .single();
 
   if (profileError) return res.status(500).json({ error: profileError.message });
@@ -104,7 +105,7 @@ const login = asyncHandler(async (req, res) => {
 
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .select('id, email, company_name, role, status')
+    .select(PROFILE_FIELDS)
     .eq('id', data.user.id)
     .single();
 
@@ -143,7 +144,7 @@ const oauthComplete = asyncHandler(async (req, res) => {
 
   let { data: profile } = await supabase
     .from('users')
-    .select('id, email, company_name, full_name, role, status, phone')
+    .select(PROFILE_FIELDS)
     .eq('id', user.id)
     .maybeSingle();
 
@@ -164,7 +165,7 @@ const oauthComplete = asyncHandler(async (req, res) => {
         },
         { onConflict: 'id' }
       )
-      .select('id, email, company_name, full_name, role, status, phone')
+      .select(PROFILE_FIELDS)
       .single();
 
     if (createErr) return res.status(500).json({ error: createErr.message });
@@ -185,25 +186,44 @@ const getMe = asyncHandler(async (req, res) => {
   return res.json({ user: req.user });
 });
 
-// The only way an existing account (one that predates this feature, or just
-// never had a number on file) can link WhatsApp -- phone number is the
-// entire identity model there, so this is what makes that possible for
-// anyone who didn't set a phone at signup.
+// Lets a customer edit their own profile -- company name, contact name,
+// phone (also the only way an existing account that predates the WhatsApp
+// feature, or just never set a number, can link WhatsApp), VAT number, and
+// address (the last two feed the "professional" quote PDF). Every field is
+// optional and only touches what's actually provided -- req.body.foo left
+// out of the request entirely (undefined) leaves that column alone; an
+// empty string clears it. Email is deliberately not editable here -- that's
+// the account's real identity (tied to the Supabase Auth user), changing it
+// needs its own re-verification flow this endpoint doesn't attempt.
 const updateMe = asyncHandler(async (req, res) => {
-  const { phone } = req.body;
-  const normalizedPhone = normalizePhone(phone);
-  if (!normalizedPhone) return res.status(400).json({ error: 'A valid phone number is required.' });
+  const { phone, company_name, full_name, vat_number, address } = req.body;
 
-  const existing = await findUserByPhone(normalizedPhone);
-  if (existing && existing.id !== req.user.id) {
-    return res.status(400).json({ error: 'That phone number is already linked to another account.' });
+  const patch = {};
+  if (company_name !== undefined) patch.company_name = company_name || null;
+  if (full_name !== undefined) patch.full_name = full_name || null;
+  if (vat_number !== undefined) patch.vat_number = vat_number || null;
+  if (address !== undefined) patch.address = address || null;
+
+  if (phone !== undefined) {
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) return res.status(400).json({ error: 'That phone number doesn\'t look valid.' });
+
+    const existing = await findUserByPhone(normalizedPhone);
+    if (existing && existing.id !== req.user.id) {
+      return res.status(400).json({ error: 'That phone number is already linked to another account.' });
+    }
+    patch.phone = normalizedPhone;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return res.status(400).json({ error: 'Nothing to update.' });
   }
 
   const { data, error } = await supabase
     .from('users')
-    .update({ phone: normalizedPhone })
+    .update(patch)
     .eq('id', req.user.id)
-    .select('id, email, company_name, full_name, role, status, phone')
+    .select(PROFILE_FIELDS)
     .single();
 
   if (error) return res.status(400).json({ error: error.message });

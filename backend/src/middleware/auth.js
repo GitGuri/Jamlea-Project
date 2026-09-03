@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const { PROFILE_FIELDS } = require('../utils/userProfileFields');
 
 // Verifies the Supabase Auth access token sent as "Authorization: Bearer <token>"
 // and attaches the caller's profile (id, email, role, company_name) to req.user.
@@ -19,7 +20,7 @@ const authenticateToken = async (req, res, next) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('users')
-      .select('id, email, company_name, full_name, role, status, phone')
+      .select(PROFILE_FIELDS)
       .eq('id', user.id)
       .single();
 

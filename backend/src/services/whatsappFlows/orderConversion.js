@@ -62,7 +62,7 @@ async function start(conversation) {
 async function fetchQuoteWithItems(quoteId, customerId) {
   const { data, error } = await supabase
     .from('quotes')
-    .select('*, quote_items(*, products(name, sku)), users(company_name, email)')
+    .select('*, quote_items(*, products(name, sku)), users(company_name, full_name, email, phone, vat_number, address)')
     .eq('id', quoteId)
     .eq('customer_id', customerId)
     .single();

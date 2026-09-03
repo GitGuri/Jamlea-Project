@@ -71,6 +71,9 @@ export default function QuoteDetailPage() {
       })),
       totalAmount: quote.total_amount,
       customer: user,
+      quoteNumber: quote.quote_number,
+      status: quote.status,
+      createdAt: quote.created_at,
     });
   };
 
