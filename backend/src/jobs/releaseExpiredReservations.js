@@ -57,19 +57,29 @@ async function run() {
   console.log(`Released ${orderIds.length} expired reservation(s): ${orderIds.join(', ')}`);
 }
 
-// No process.exit() here on purpose: notifyUser's email/WhatsApp sends are
-// fire-and-forget (see notificationService.js) precisely because most
-// callers are long-running servers that don't need to wait on them -- but
-// this script is the one caller that's about to terminate on its own, so
-// forcing an immediate exit would kill those sends mid-flight before they
-// ever left the process. Setting exitCode and letting the event loop drain
-// naturally means Node only exits once every pending send has actually
-// settled.
-run()
-  .then(() => {
-    process.exitCode = process.exitCode || 0;
-  })
-  .catch((err) => {
-    console.error('releaseExpiredReservations job crashed:', err);
-    process.exitCode = 1;
-  });
+// Only auto-runs when executed directly (`node src/jobs/releaseExpiredReservations.js`,
+// what the Render Cron Job actually invokes) -- not when merely required.
+// Without this guard, anything that requires() this module for an unrelated
+// reason (a test importing it, a tool sweeping every file in src/ to sanity
+// check requires) silently fires the job for real against production data
+// as a side effect of loading it.
+if (require.main === module) {
+  // No process.exit() here on purpose: notifyUser's email/WhatsApp sends are
+  // fire-and-forget (see notificationService.js) precisely because most
+  // callers are long-running servers that don't need to wait on them -- but
+  // this script is the one caller that's about to terminate on its own, so
+  // forcing an immediate exit would kill those sends mid-flight before they
+  // ever left the process. Setting exitCode and letting the event loop drain
+  // naturally means Node only exits once every pending send has actually
+  // settled.
+  run()
+    .then(() => {
+      process.exitCode = process.exitCode || 0;
+    })
+    .catch((err) => {
+      console.error('releaseExpiredReservations job crashed:', err);
+      process.exitCode = 1;
+    });
+}
+
+module.exports = { run };
