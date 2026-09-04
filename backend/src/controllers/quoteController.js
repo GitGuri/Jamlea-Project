@@ -186,7 +186,7 @@ const checkoutQuoteFast = asyncHandler(async (req, res) => {
       flagIfNeeded(result.order_id, req.user.id, order.total_amount),
       notifyInternalTeam({
         type: 'general',
-        title: 'Fast checkout -- stock reserved',
+        title: 'Fast checkout: stock reserved',
         message: `${customerLabel} reserved stock for order #${order.order_number} (${formatCurrency(order.total_amount)}) and can now pay via PayFast.`,
         relatedType: 'order',
         relatedId: result.order_id,
@@ -205,7 +205,7 @@ const checkoutQuoteFast = asyncHandler(async (req, res) => {
       flagStockShort(result.order_id),
       notifyInternalTeam({
         type: 'general',
-        title: 'Fast checkout -- stock shortfall',
+        title: 'Fast checkout: stock shortfall',
         message: `${customerLabel}'s fast checkout for order #${order.order_number} hit insufficient stock and needs manual review.`,
         relatedType: 'order',
         relatedId: result.order_id,

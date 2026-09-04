@@ -27,7 +27,7 @@ async function handle(conversation, message) {
     if (message.interactiveId === 'has_account_yes' || /^y(es)?$/.test(said)) {
       await sendText(
         phone,
-        'No problem -- log into the customer portal, open your profile, and add this WhatsApp number. Message us again once that\'s done and we\'ll recognize you right away.'
+        'No problem. Log into the customer portal, open your profile, and add this WhatsApp number. Message us again once that\'s done and we\'ll recognize you right away.'
       );
       return { newState: 'main_menu', newContext: {} };
     }
@@ -36,7 +36,7 @@ async function handle(conversation, message) {
       return { newState: 'awaiting_new_account_name', newContext: {} };
     }
     await sendButtons(phone, {
-      body: "Sorry, I didn't catch that -- do you already have a TyroTech account?",
+      body: "Sorry, I didn't catch that. Do you already have a Tyrotech account?",
       buttons: HAS_ACCOUNT_BUTTONS,
     });
     return { newState: 'awaiting_has_account', newContext: {} };
@@ -55,13 +55,13 @@ async function handle(conversation, message) {
   if (state === 'awaiting_new_account_email') {
     const attempts = (context.attempts || 0) + 1;
     if (attempts > MAX_EMAIL_ATTEMPTS) {
-      await sendText(phone, "That's not working out -- please contact us directly to get set up.");
+      await sendText(phone, "That's not working out. Please contact us directly to get set up.");
       return { newState: 'main_menu', newContext: {} };
     }
 
     const email = (message.text || '').trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      await sendText(phone, "That doesn't look like a valid email -- what's your email address?");
+      await sendText(phone, "That doesn't look like a valid email. What's your email address?");
       return { newState: 'awaiting_new_account_email', newContext: { ...context, attempts } };
     }
 
@@ -69,7 +69,7 @@ async function handle(conversation, message) {
     if (existingByEmail) {
       await sendText(
         phone,
-        "That email's already registered to an account -- log into the portal and add this number to your profile instead, then message us again."
+        "That email's already registered to an account. Log into the portal and add this number to your profile instead, then message us again."
       );
       return { newState: 'main_menu', newContext: {} };
     }
@@ -86,7 +86,7 @@ async function handle(conversation, message) {
       user_metadata: { full_name: name, role: 'customer' },
     });
     if (error) {
-      await sendText(phone, 'Something went wrong creating your account -- please try again in a moment.');
+      await sendText(phone, 'Something went wrong creating your account. Please try again in a moment.');
       return { newState: 'main_menu', newContext: {} };
     }
 
@@ -102,13 +102,13 @@ async function handle(conversation, message) {
       .single();
 
     if (profileError) {
-      await sendText(phone, 'Something went wrong creating your account -- please try again in a moment.');
+      await sendText(phone, 'Something went wrong creating your account. Please try again in a moment.');
       return { newState: 'main_menu', newContext: {} };
     }
 
     await sendText(
       phone,
-      `You're all set${name ? `, ${name}` : ''}! Your TyroTech account is ready to use right here on WhatsApp. Want the web portal too? Visit the login page and use "Forgot password?" with ${email} to set one.`
+      `You're all set${name ? `, ${name}` : ''}! Your Tyrotech account is ready to use right here on WhatsApp. Want the web portal too? Visit the login page and use "Forgot password?" with ${email} to set one.`
     );
     return greetAndShowMenu(phone, profile);
   }
@@ -120,7 +120,7 @@ async function handle(conversation, message) {
   }
 
   await sendButtons(phone, {
-    body: '👋 Welcome to TyroTech! Do you already have an account on our customer portal?',
+    body: '👋 Welcome to Tyrotech! Do you already have an account on our customer portal?',
     buttons: HAS_ACCOUNT_BUTTONS,
   });
   return { newState: 'awaiting_has_account', newContext: {} };

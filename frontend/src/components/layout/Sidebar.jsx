@@ -40,7 +40,7 @@ export default function Sidebar() {
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col bg-ink text-white">
       <div className="flex items-center gap-2 px-6 py-6">
-        <img src="/jamlea.jpg" alt="TyroTech" className="h-10 w-10 rounded-full object-cover" />
+        <img src="/jamlea.jpg" alt="Tyrotech" className="h-10 w-10 rounded-full object-cover" />
         <span className="font-display text-lg font-semibold tracking-tight">Portal</span>
       </div>
 

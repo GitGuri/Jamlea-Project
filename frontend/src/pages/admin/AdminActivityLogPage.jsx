@@ -47,7 +47,7 @@ export default function AdminActivityLogPage() {
     <div>
       <h1 className="font-display text-xl font-semibold text-ink">Activity log</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Every significant action across the app -- order decisions, payment and review outcomes, quote
+        Every significant action across the app: order decisions, payment and review outcomes, quote
         conversions, and account changes. Visible to admins only.
       </p>
 

@@ -18,7 +18,7 @@ function addItem(items, product, quantity) {
 }
 
 async function sendReview(phone, items) {
-  const lines = items.map((i) => `${i.quantity}x ${i.name} -- ${formatCurrency(i.unit_price * i.quantity)}`);
+  const lines = items.map((i) => `${i.quantity}x ${i.name} · ${formatCurrency(i.unit_price * i.quantity)}`);
   const total = items.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
 
   await sendButtons(phone, {
@@ -41,7 +41,7 @@ async function handle(conversation, message) {
       return { newState: 'quote_awaiting_quantity', newContext: context };
     }
     if (quantity > product.stock_quantity) {
-      await sendText(phone, `Only ${product.stock_quantity} of ${product.name} available -- please enter a smaller quantity.`);
+      await sendText(phone, `Only ${product.stock_quantity} of ${product.name} available. Please enter a smaller quantity.`);
       return { newState: 'quote_awaiting_quantity', newContext: context };
     }
 
@@ -106,7 +106,7 @@ async function handle(conversation, message) {
 
       await sendText(
         phone,
-        `✅ Quote #${result.quoteNumber} saved! Total: ${formatCurrency(result.total_amount)}. Reply "menu" any time -- pick "Convert quote to order" when you're ready to order this.`
+        `✅ Quote #${result.quoteNumber} saved! Total: ${formatCurrency(result.total_amount)}. Reply "menu" any time. Pick "Convert quote to order" when you're ready to order this.`
       );
       const { sendMenu } = require('./mainMenu');
       await sendMenu(phone);

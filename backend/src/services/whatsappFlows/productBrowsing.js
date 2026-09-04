@@ -94,7 +94,7 @@ async function handle(conversation, message) {
           await sendText(phone, `${product.name} is currently out of stock. Pick another product, or reply "menu" to go back.`);
           return sendProductPage(phone, context.category, context.page || 0, context.purpose, context.items || []);
         }
-        await sendText(phone, `${product.name} (${formatCurrency(product.unit_price)}) -- how many would you like?`);
+        await sendText(phone, `${product.name} (${formatCurrency(product.unit_price)}). How many would you like?`);
         return {
           newState: 'quote_awaiting_quantity',
           newContext: { items: context.items || [], pendingProduct: { id: product.id, name: product.name, unit_price: product.unit_price, stock_quantity: product.stock_quantity } },

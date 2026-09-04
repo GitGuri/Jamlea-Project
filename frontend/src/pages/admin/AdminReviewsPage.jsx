@@ -80,7 +80,7 @@ export default function AdminReviewsPage() {
     <div>
       <h1 className="font-display text-xl font-semibold text-ink">Review queue</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Orders the automated checkout couldn't fully handle on its own -- worked independently, one at a time.
+        Orders the automated checkout couldn't fully handle on its own. Worked independently, one at a time.
       </p>
 
       {error && <p className="mt-4 rounded-lg bg-bad-50 px-3 py-2 text-sm text-bad-500">{error}</p>}
@@ -100,7 +100,7 @@ export default function AdminReviewsPage() {
                   <p className="text-sm font-medium text-ink">
                     Order #{review.orders?.order_number}{' '}
                     <span className="font-normal text-slate-500">
-                      -- {review.orders?.users?.company_name || review.orders?.users?.email}
+                      · {review.orders?.users?.company_name || review.orders?.users?.email}
                     </span>
                   </p>
                   <p className="mt-0.5 text-xs text-slate-400">

@@ -163,7 +163,7 @@ export default function AdminOrderDetailPage() {
           {nextOptions.length === 0 ? (
             <p className="text-sm text-slate-500">
               {order.status === 'stock_reserved'
-                ? 'Awaiting PayFast payment -- moves to "confirmed" automatically once paid.'
+                ? 'Awaiting PayFast payment. Moves to "confirmed" automatically once paid.'
                 : 'This order is in a final state.'}
             </p>
           ) : (

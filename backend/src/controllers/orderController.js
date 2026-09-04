@@ -41,7 +41,7 @@ const ORDER_STATUSES = ['pending_approval', 'approved', 'processing', 'completed
 const STATUS_NOTIFICATIONS = {
   approved: (orderNumber) => ({
     title: 'Order approved',
-    message: `Good news -- your order #${orderNumber} has been approved. Submit your payment details on the Customer Portal or via WhatsApp ("Submit a payment" from the main menu).`,
+    message: `Good news, your order #${orderNumber} has been approved. Submit your payment details on the Customer Portal or via WhatsApp ("Submit a payment" from the main menu).`,
   }),
   cancelled: (orderNumber) => ({
     title: 'Order cancelled',

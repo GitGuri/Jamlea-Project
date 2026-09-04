@@ -14,8 +14,7 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 20;
-  const { addItem } = useCart();
-  const [justAdded, setJustAdded] = useState(null);
+  const { addItem, items } = useCart();
   const [quantities, setQuantities] = useState({});
 
   useEffect(() => {
@@ -40,11 +39,17 @@ export default function ProductsPage() {
     setQuantities((prev) => ({ ...prev, [product.id]: clamped }));
   };
 
+  // Derived straight from the cart's own contents rather than a local
+  // "just clicked" flag with a timeout -- that way "Added" stays showing for
+  // as long as the item is actually in the quote (surviving a page revisit,
+  // since the cart persists to localStorage), and automatically reverts to
+  // "Add to quote" if it's later removed from the cart page, instead of only
+  // ever flashing for ~1s regardless of what's really in there.
+  const isInCart = (productId) => items.some((i) => i.product_id === productId);
+
   const handleAdd = (product) => {
     addItem(product, getQuantity(product));
-    setJustAdded(product.id);
     setQuantities((prev) => ({ ...prev, [product.id]: 1 }));
-    setTimeout(() => setJustAdded(null), 1200);
   };
 
   const totalPages = Math.max(Math.ceil(total / limit), 1);
@@ -133,11 +138,11 @@ export default function ProductsPage() {
                         className="w-16 rounded-lg border border-slate-200 px-2 py-2 text-sm outline-none transition-colors duration-150 focus:border-teal-500 disabled:bg-slate-50"
                       />
                       <Button
-                        variant={justAdded === product.id ? 'secondary' : 'primary'}
+                        variant={isInCart(product.id) ? 'secondary' : 'primary'}
                         onClick={() => handleAdd(product)}
                         disabled={product.stock_quantity === 0}
                       >
-                        {justAdded === product.id ? 'Added ✓' : 'Add to quote'}
+                        {isInCart(product.id) ? 'Added ✓' : 'Add to quote'}
                       </Button>
                     </div>
                   </div>

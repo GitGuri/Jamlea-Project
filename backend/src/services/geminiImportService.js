@@ -51,7 +51,7 @@ async function callGemini(parts) {
   try {
     rows = JSON.parse(text);
   } catch {
-    throw new Error('Gemini returned malformed data -- try a clearer file.');
+    throw new Error('Gemini returned malformed data. Try a clearer file.');
   }
   if (!Array.isArray(rows)) throw new Error('Gemini returned an unexpected shape.');
 

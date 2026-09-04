@@ -223,7 +223,7 @@ export default function AdminAnalyticsPage() {
       </div>
 
       <Card className="mt-6 p-5">
-        <h2 className="font-display text-base font-semibold text-ink">Revenue -- {rangeLabel}</h2>
+        <h2 className="font-display text-base font-semibold text-ink">Revenue: {rangeLabel}</h2>
         <p className="mt-1 text-xs text-slate-500">Non-cancelled orders, by day placed.</p>
         <div className="mt-4">
           <RevenueTrendChart data={revenueOverTime} rangeLabel={rangeLabel} />

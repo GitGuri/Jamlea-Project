@@ -38,7 +38,7 @@ export default function AdminPaymentsPage() {
   return (
     <div>
       <h1 className="font-display text-xl font-semibold text-ink">Payments</h1>
-      <p className="mt-1 text-sm text-slate-500">Bank transfer / EFT payments submitted against approved orders.</p>
+      <p className="mt-1 text-sm text-slate-500">Payments submitted against approved orders.</p>
 
       {error && <p className="mt-4 rounded-lg bg-bad-50 px-3 py-2 text-sm text-bad-500">{error}</p>}
 

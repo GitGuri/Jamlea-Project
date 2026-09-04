@@ -36,13 +36,13 @@ function ReservationCountdown({ secondsRemaining: initialSeconds }) {
     return () => clearInterval(timer);
   }, []);
 
-  if (secondsLeft <= 0) return <p className="text-sm text-bad-500">Reservation expired -- refreshing...</p>;
+  if (secondsLeft <= 0) return <p className="text-sm text-bad-500">Reservation expired. Refreshing...</p>;
 
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
   return (
     <p className="text-sm text-amber-600">
-      Stock reserved -- pay within {minutes}:{String(seconds).padStart(2, '0')} or it releases automatically.
+      Stock reserved. Pay within {minutes}:{String(seconds).padStart(2, '0')} or it releases automatically.
     </p>
   );
 }
@@ -174,7 +174,7 @@ export default function OrderDetailPage() {
       {order.status === 'pending_approval' && (
         <Card className="mt-6 p-4">
           <p className="text-sm text-amber-600">
-            Your order is awaiting staff approval -- you'll get a notification once it's ready for payment.
+            Your order is awaiting staff approval. You'll get a notification once it's ready for payment.
           </p>
         </Card>
       )}

@@ -105,7 +105,7 @@ export default function Profile() {
             />
             <p className="mt-1 text-xs text-slate-400">
               Linking this lets you browse products, build quotes, and place orders over WhatsApp using
-              this same account -- message our WhatsApp number once it's saved and we'll recognize you.
+              this same account. Message our WhatsApp number once it's saved and we'll recognize you.
             </p>
           </div>
 

@@ -39,7 +39,7 @@ async function startQuotes(conversation) {
     return { newState: 'main_menu', newContext: {} };
   }
   if (!quotes.length) {
-    await sendText(phone, "You don't have any quotes yet -- pick \"Create a quotation\" from the menu first.");
+    await sendText(phone, "You don't have any quotes yet. Pick \"Create a quotation\" from the menu first.");
     const { sendMenu } = require('./mainMenu');
     await sendMenu(phone);
     return { newState: 'main_menu', newContext: {} };
@@ -71,10 +71,10 @@ async function sendQuoteDetail(phone, quote) {
   const items = quote.quote_items;
   const lines = items
     .slice(0, MAX_PREVIEW_LINES)
-    .map((i) => `${i.quantity}x ${i.products?.name} -- ${formatCurrency(i.unit_price * i.quantity)}`);
+    .map((i) => `${i.quantity}x ${i.products?.name} · ${formatCurrency(i.unit_price * i.quantity)}`);
   const extra =
     items.length > MAX_PREVIEW_LINES
-      ? `\n+${items.length - MAX_PREVIEW_LINES} more -- download the PDF for the full list`
+      ? `\n+${items.length - MAX_PREVIEW_LINES} more. Download the PDF for the full list.`
       : '';
 
   await sendButtons(phone, {
@@ -114,7 +114,7 @@ async function startOrders(conversation) {
     return { newState: 'main_menu', newContext: {} };
   }
   if (!orders.length) {
-    await sendText(phone, "You don't have any orders yet -- convert a quote into one from the menu first.");
+    await sendText(phone, "You don't have any orders yet. Convert a quote into one from the menu first.");
     const { sendMenu } = require('./mainMenu');
     await sendMenu(phone);
     return { newState: 'main_menu', newContext: {} };
@@ -158,7 +158,7 @@ async function sendOrderDetail(phone, order) {
   const items = order.order_items;
   const lines = items
     .slice(0, MAX_PREVIEW_LINES)
-    .map((i) => `${i.quantity}x ${i.products?.name} -- ${formatCurrency(i.unit_price * i.quantity)}`);
+    .map((i) => `${i.quantity}x ${i.products?.name} · ${formatCurrency(i.unit_price * i.quantity)}`);
   const extra = items.length > MAX_PREVIEW_LINES ? `\n+${items.length - MAX_PREVIEW_LINES} more` : '';
 
   const hasActivePayment = order.payments?.some((p) => p.status === 'submitted' || p.status === 'approved');
@@ -168,7 +168,7 @@ async function sendOrderDetail(phone, order) {
   const isPayable = ['approved', 'stock_reserved'].includes(order.status);
   const paymentNudge =
     isPayable && !hasActivePayment
-      ? '\n\nThis order is awaiting payment -- pick "Submit a payment" from the main menu.'
+      ? '\n\nThis order is awaiting payment. Pick "Submit a payment" from the main menu.'
       : '';
 
   await sendButtons(phone, {

@@ -131,7 +131,7 @@ export default function AdminNewQuotePage() {
       </Link>
 
       <h1 className="mt-3 font-display text-xl font-semibold text-ink">New quote for a customer</h1>
-      <p className="mt-1 text-sm text-slate-500">Pick a customer and add products -- the quote is created in their name.</p>
+      <p className="mt-1 text-sm text-slate-500">Pick a customer and add products. The quote is created in their name.</p>
 
       <Card className="mt-6 p-5">
         <h2 className="font-display text-base font-semibold text-ink">Customer</h2>
@@ -264,7 +264,7 @@ export default function AdminNewQuotePage() {
             <option value="">Choose a product...</option>
             {allProducts.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} ({p.sku}) -- {formatCurrency(p.unit_price)}
+                {p.name} ({p.sku}) · {formatCurrency(p.unit_price)}
               </option>
             ))}
           </select>

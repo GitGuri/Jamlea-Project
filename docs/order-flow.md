@@ -1,6 +1,6 @@
 # Order flow: manual approval + automated PayFast checkout
 
-TyroTech has two ways an order can move from "just placed" to "fulfilled" —
+Tyrotech has two ways an order can move from "just placed" to "fulfilled" —
 the original manual-approval flow, and a newer automated fast-checkout path
 that sits alongside it. Both share the same `orders` table and the same
 `orders.status` column; this document is the map of what each status means
@@ -127,7 +127,8 @@ proceed automatically.
 | `new_customer`      | Customer has no prior order in `completed`/`confirmed`/`ready_for_collection`  | `acknowledge` / `cancel`                             |
 
 Env vars: `ADMIN_REVIEW_THRESHOLD` (default `50000`),
-`RESERVATION_EXPIRY_MINUTES` (default `60`).
+`RESERVATION_EXPIRY_MINUTES` (default `60`),
+`RESERVATION_WARNING_LEAD_MINUTES` (default `10`).
 
 ## Reservation expiry
 
@@ -139,3 +140,15 @@ double-run once this app scales past one Render web instance. It calls
 reservation rows, and cancels the affected orders in one transaction; the
 Node script then sends the "your reservation expired" notification per
 order (plpgsql can't send emails/notifications itself).
+
+`backend/src/jobs/warnExpiringReservations.js` is a second, separate Render
+Cron Job (e.g. also every 5 minutes) that runs *before* the above -- it warns
+a customer while their reservation still has a few minutes left, instead of
+only telling them after the order's already been cancelled. It calls
+`warn_expiring_reservations()` (`020_reservation_expiry_warning.sql`), which
+atomically claims (via `orders.reservation_warned_at`) every `stock_reserved`
+order whose reservation expires within `RESERVATION_WARNING_LEAD_MINUTES`
+(default `10`) and hasn't been warned yet, so two overlapping runs can never
+double-send. Kept as its own job rather than folded into the release job
+above so either can change schedule or logic independently, and a bug in the
+warning path can't affect the actual restock/cancel path.

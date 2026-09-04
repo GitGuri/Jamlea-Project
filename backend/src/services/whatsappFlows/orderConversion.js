@@ -32,7 +32,7 @@ async function start(conversation) {
     return { newState: 'main_menu', newContext: {} };
   }
   if (!quotes.length) {
-    await sendText(phone, "You don't have any saved quotes yet -- pick \"Create a quotation\" from the menu first.");
+    await sendText(phone, "You don't have any saved quotes yet. Pick \"Create a quotation\" from the menu first.");
     const { sendMenu } = require('./mainMenu');
     await sendMenu(phone);
     return { newState: 'main_menu', newContext: {} };
@@ -75,10 +75,10 @@ async function sendReview(phone, quote) {
   const items = quote.quote_items;
   const lines = items
     .slice(0, MAX_PREVIEW_LINES)
-    .map((i) => `${i.quantity}x ${i.products?.name} -- ${formatCurrency(i.unit_price * i.quantity)}`);
+    .map((i) => `${i.quantity}x ${i.products?.name} · ${formatCurrency(i.unit_price * i.quantity)}`);
   const extra =
     items.length > MAX_PREVIEW_LINES
-      ? `\n+${items.length - MAX_PREVIEW_LINES} more -- download the PDF for the full list`
+      ? `\n+${items.length - MAX_PREVIEW_LINES} more. Download the PDF for the full list.`
       : '';
 
   await sendButtons(phone, {
@@ -138,7 +138,7 @@ async function handleConfirmConvert(conversation, quoteId) {
 
   await sendText(
     phone,
-    `✅ Order placed from quote #${result.quoteNumber}! Your order still needs to be approved by our team before payment -- we'll let you know as soon as that happens.`
+    `✅ Order placed from quote #${result.quoteNumber}! Your order still needs to be approved by our team before payment. We'll let you know as soon as that happens.`
   );
   const { sendMenu } = require('./mainMenu');
   await sendMenu(phone);

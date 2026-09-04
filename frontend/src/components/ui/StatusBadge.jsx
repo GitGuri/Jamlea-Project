@@ -43,6 +43,7 @@ const DOT_STYLES = {
 // customer's point of view, even though the stored status is 'submitted').
 const LABELS = {
   submitted: 'Quote Finalized',
+  confirmed: 'Paid',
   payment_submitted: 'Payment submitted',
   payment_approved: 'Payment approved',
   payment_rejected: 'Payment rejected',
